@@ -1,0 +1,46 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_game;
+use ares_faction;
+use ares_player;
+use stard_lib;
+use stard_log;
+
+ares_setup_run_env('.');
+stard_setup_run_env("./../../");
+
+main(@ARGV);
+exit 0;
+##############################################
+
+
+
+
+sub main {
+	my $player = $_[0];
+	my $faction_id = $_[1];
+	my $lock_fh = ares_player_lock($player);
+	if (!$lock_fh) {
+		exit 0;
+	}
+
+	my $game_state = ares_get_game_state();
+
+	if (!(
+		$game_state eq 'waiting_for_players' ||
+		$game_state eq 'waiting_start'
+	)) {
+		stard_pm($player, "Faction changing is not permitted at this time");
+		ares_fix_faction($player);
+		ares_player_unlock($player);
+		exit 1;
+	}
+
+	sleep 1;
+	ares_player_unlock($lock_fh);
+}

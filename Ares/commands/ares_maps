@@ -1,0 +1,36 @@
+#!perl
+use File::Basename;
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_map;
+use stard_lib;
+use stard_log;
+
+$|=1;
+
+## setup environment
+stard_setup_run_env("./../../");
+ares_setup_run_env('.');
+
+
+
+main(@ARGV);
+exit 0;
+############################################
+
+# real work starts where
+sub main {
+	my $player = $_[0];
+
+	my @maps = @{ares_get_map_list()};
+	my $cur_map = ares_get_cur_map();
+
+	if ($cur_map) {
+		stard_pm($player, "Current Map: $cur_map");
+	}
+	stard_pm($player, "Available Maps:");
+	foreach my $map (@maps) {
+		stard_pm($player, $map);
+	};
+};

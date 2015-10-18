@@ -1,0 +1,1 @@
+!help ares - display help information on the ares mod commands

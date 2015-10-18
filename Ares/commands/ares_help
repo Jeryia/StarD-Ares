@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+## setup environment
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_game;
+use stard_lib;
+use stard_log;
+$|=1;
+
+my $ares_spool = "$ares_home/spool";
+my $stard_home = "$ares_home/../..";
+
+stard_setup_run_env($stard_home);
+ares_setup_run_env('.');
+
+
+
+main(@ARGV);
+exit 0;
+##############################################
+
+
+
+sub main {
+	my $player = $_[0];
+	my $game_state = ares_get_game_state();
+
+	stard_broadcast("Ares help info has been sent to you $player!");
+	if ($game_state eq "waiting_players") {
+		stard_pm($player, "The game is currently waiting on players to join.");
+		stard_pm($player, "You may use this time to upload any blueprints"); 
+		stard_pm($player, "you want to use, spawn ships or strategize with");
+		stard_pm($player, "your faction.");
+	}
+	elsif ($game_state eq "waiting_start") {
+		stard_pm($player, "The game will start soon.");
+		stard_pm($player, "You may use this time to upload any blueprints"); 
+		stard_pm($player, "you want to use, spawn ships or strategize with");
+		stard_pm($player, "your faction.");
+	}
+	elsif ($game_state eq "in_progress") {
+		stard_pm($player, "The game is currently in progress");
+		stard_pm($player, "Your objective is to capture control points to ");
+		stard_pm($player, "get money, and destroy your enemy's base(s).");
+		stard_pm($player, "To capture control points, you need to be in");
+		stard_pm($player, "the same sector as it, and have no enemies in that");
+		stard_pm($player, "sector. it will take about 60 seconds to capture a ");
+		stard_pm($player, "control point");
+	}
+	elsif ($game_state eq "completed") {
+		stard_pm($player, "The game is completed.");
+		stard_pm($player, "A new one may start soon. Ask an admin.");
+	}
+	else {
+		stard_pm($player, "Game is currenly setting itself up");
+		stard_pm($player, "Please Wait...");
+	}
+	stard_pm($player, "You can check the locations of the bases and control");
+	stard_pm($player, "points at any time with the !status command.");
+};	

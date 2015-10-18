@@ -1,0 +1,48 @@
+#!perl
+use File::Basename;
+
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_game;
+use ares_faction;
+use stard_lib;
+use stard_log;
+
+$|=1;
+
+
+ares_setup_run_env('.');
+stard_setup_run_env("./../../");
+
+
+
+main(@ARGV);
+exit 0;
+############################################################################
+
+# real work starts where
+sub main {
+	my $player = $_[0];
+	my $type = $_[1];
+
+	if ($type && $type ne 'base' && $type ne 'control') {
+		usage();
+	}
+
+	my $faction = ares_get_player_faction($player);	
+	my @output = split("\n", ares_game_status_string($faction, $type));
+	
+	stard_broadcast("Current game status has been sent to you, $player.");
+	foreach my $line (@output) {
+		stard_pm($player, $line);
+	};
+};
+
+sub usage {
+	my $player = $_[0];
+
+	stard_pm($player, "Usage: !status <type>");
+	stard_pm($player, "Desc: Get the game, base and control point status");
+	stard_pm($player, "Valid types: base, control");
+}

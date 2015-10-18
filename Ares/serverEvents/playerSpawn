@@ -1,0 +1,48 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_faction;
+use ares_player;
+use ares_game;
+use stard_lib;
+use stard_log;
+
+$|=1;
+
+ares_setup_run_env('.');
+stard_setup_run_env("./../../");
+
+main(@ARGV);
+exit 0;
+##############################################
+
+
+
+
+sub main {
+	my $player = $_[0];
+
+	if (ares_get_game_state() eq '' || ares_get_game_state() eq 'completed') {
+		exit 0;
+	}
+
+	my $lock_fh = ares_player_lock($player);
+
+
+	if (!$lock_fh) {
+		exit 0;
+	}
+	if (!ares_get_player_faction($player)) {
+		ares_new_player($player);
+	}
+
+	# Put them home. safeguard against using opposing faction base as spawn.
+	#stard_change_sector_for($player, ares_get_faction_home(ares_get_player_faction($player)));
+
+	ares_player_unlock($lock_fh);
+}
+

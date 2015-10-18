@@ -1,0 +1,537 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_game;
+use ares_object;
+use ares_faction;
+use ares_player;
+use ares_vote;
+use ares_map;
+
+$| =1;
+
+my $ares_home = '.';
+my $stard_home= "$ares_home/../..";
+my $ares_state = "$ares_home/State";
+my $ares_maps = "$ares_home/Maps";
+use stard_lib;
+use stard_log;
+
+require "$stard_home/lib/stard_lib.pm";
+#stard_setup_run_env($stard_home);
+ares_setup_run_env($ares_home);
+$stard_home = "./../..";
+
+#require "$stard_home/lib/stard_lib.pm";
+stard_setup_run_env($stard_home);
+
+set_loglevel(6);
+
+
+my %config = %{stard_read_config("$ares_home/ares.cfg")};
+my %last_notification = ();
+
+my %sector_state;
+
+main();
+exit 0;
+############################################################################
+
+
+## Real work starts here
+sub main {
+	my %ares_map_config;
+	my $state_time = 0;
+	stdout_log("Ares Daemon Started", 5);
+
+	my $status;
+	while (1 == 1) {
+		stdout_log("Beginning main loop", 6);
+		my $new_status;
+		if (!$status) {
+			$status = "waiting_for_players";
+			$new_status = "waiting_for_players";
+			%ares_map_config = ();
+		};
+		if (open(my $status_fh, "<", "$ares_state/Status")) {
+			my @tmp = <$status_fh>;
+			my $save_status = join("", @tmp);
+			close($status_fh);
+			if ($save_status ne $status) {
+				print "$save_status ne $status\n";
+				$new_status = $save_status;
+				print "status_update: $new_status\n";
+				$status = $new_status;
+				$state_time=0;
+			};
+		}
+		else {
+			print "Could not open status file '$ares_state/Status'\n";
+		}
+		
+		if ($status eq "waiting_for_players") {
+			$new_status=waiting_for_players($state_time);
+		}
+		elsif ($status eq "waiting_start") {
+			$new_status=waiting_start($state_time);
+	
+		}
+		elsif ($status eq "in_progress") {
+			$new_status=in_progress($state_time,\%ares_map_config);
+		}
+		elsif ($status eq "complete") {
+			$new_status=completed($state_time);
+		}
+		else {
+			$new_status = "waiting_for_players";
+		};
+		if ($new_status) {
+			stdout_log("Game state update: $new_status", 5);
+			
+			ares_set_game_state($new_status);
+			$status = $new_status;
+			$state_time=0;
+			stard_broadcast("You can view the progress of the game at any time with the !status command.");
+			stard_broadcast("To see how to play type !ares_help");
+			if (
+				($new_status eq "waiting_for_players" || 
+				$new_status eq "waiting_start" )
+			) {
+				%ares_map_config = ();
+			};
+		};
+		if ( ! keys %ares_map_config ) {
+			my $map = ares_get_cur_map();
+			if (!$map && $config{General}{autostart}) {
+				stdout_log("No map is loaded! Starting new game", 5);
+				my $new_map = ares_vote_win();
+				stdout_log("Loading new game with map $new_map", 5);
+				system("perl $ares_home/commands/ares_start_game '' '$new_map'");
+			}	
+			if ($map) {
+				stdout_log("Loading new map config", 6);
+				%ares_map_config = %{ares_get_map_config()};
+				if (!(keys %ares_map_config)) {
+					stdout_log("Error Loading new map config", 2);
+					stard_broadcast("Error loading current map. Please contact an admin.");
+					stdout_log("Resetting current map, let's hope that fixes this...", 5);
+					ares_set_cur_map();
+				}
+			}
+		}
+		stdout_log("Main loop complete, sleeping until next run", 6);
+		sleep $config{General}{poll_time};
+		$state_time +=$config{General}{poll_time};
+		stdout_log("=== MARK ===", 6);
+	};
+};
+
+
+## waiting_for_players
+# Currently there are not enough players in the game to start
+# INPUT1: time we've been in this state (seconds)
+sub waiting_for_players {
+	my $state_time = $_[0];
+	my %player_list = %{stard_player_list()};
+	
+	my @players;
+	foreach my $player (keys %player_list) {
+		if (!stard_is_admin($player)) {
+			push(@players, $player);
+		}
+	}
+
+
+	corral_factions(\%player_list);
+	if (@players >= $config{General}{min_players}) {
+		stard_broadcast("Notice: Game Starting in $config{General}{player_prep_time} minutes.");
+		stard_broadcast("Please Take this time to upload any ships you need, and spawn them.");
+		stdout_log("Enough players have logged on, switching to waiting_start", 5);
+		return "waiting_start";
+	}
+	my $message = sprintf("Waiting on Players.. have %d of needed %d", $#players +1, $config{General}{min_players});
+	stdout_log($message, 6);
+	notify_every($message, 30);
+	return;
+}
+
+## waiting_start
+# Enough players are onine to start, just giving them time to get ready before we start.
+# INPUT1: time we've been in this state (seconds)
+sub waiting_start {
+	my $state_time = $_[0];
+	my %player_list = %{stard_player_list()};
+	
+	my @players;
+	foreach my $player (keys %player_list) {
+		if (!stard_is_admin($player)) {
+			push(@players, $player);
+		}
+	}
+	corral_factions(\%player_list);
+
+	if (@players < $config{General}{min_players}) {
+		stard_broadcast("Notice: Too few players are online to start a game. Waiting for players to join.");
+		stdout_log("No longer have enoug players. Switching to waiting_for_players", 5);
+		return "waiting_for_players";
+	}
+	if ($state_time / 60 >= $config{General}{player_prep_time}) {
+		my @factions = @{ares_get_factions()};
+		foreach my $faction (@factions) {
+			my $home = ares_get_faction_home($faction);
+			stdout_log("Removing noexit from sector '$home'.", 6);
+			if (!stard_sector_chmod($home, "remove", "noexit")) {
+				stard_broadcast("Error removing noexit on $home.\n");
+				stard_broadcast("Failed to start game. Please inform an admin!\n");
+				print stard_last_output();
+				stdout_log("Failed to remove noexit from sector '$home'.", 2);
+				stdout_log("Could not start game. Will try again next loop", 2);
+				return;
+			}
+		
+			stdout_log("Setting '$home' to unprotected.", 6);
+			if (!stard_sector_chmod($home, "remove", "protected")) {
+				stard_broadcast("Error removing protection on $home.\n");
+				stard_broadcast("Failed to start game. Please inform an admin!\n");
+				print stard_last_output();
+				stdout_log("Failed to set sector '$home' as unprotected.", 2);
+				stdout_log("Could not start game. Will try again next loop", 2);
+				return;
+			}
+		}
+		stard_broadcast("Notice: Game Has Started.");
+		stard_broadcast("You are now free to attack your opponents.");
+		stdout_log("Game has started", 5);
+		return "in_progress";
+	}
+	my $remaining = ($config{General}{player_prep_time} * 60) - $state_time;
+	my $r_minutes = int($remaining/60);
+	my $r_seconds = $remaining - ($r_minutes * 60);
+	stdout_log("Remaining to start: $r_minutes min, and $r_seconds sec", 6);
+	notify_every("Game Starts in $r_minutes minutes and $r_seconds seconds", 30);
+	return;
+}
+
+
+## in_progress
+# Game is in progress. We're checking to see if 
+# players are taking points, and giving out 
+# credits to the factions based on the control 
+# points they own.
+# INPUT1: time we've been in this state (seconds)
+# INPUT2: map configuration hash.
+sub in_progress {
+	my $state_time = $_[0];
+	my %ares_map_config = %{$_[1]};
+
+	my %player_list = %{stard_player_list()};
+	my %faction_payout;
+	my $payable_players;
+
+
+
+	foreach my $object (keys %ares_map_config) {
+		stdout_log("Checking $object", 6);
+		my $station_fh;
+		if (open($station_fh, "<", "$ares_state/Objects/$object")) {
+			$sector_state{$object}{state} = join("", <$station_fh>);
+			$sector_state{$object}{state}=~s/\s//i;
+		}
+
+		if (! defined $sector_state{$object}{state}) {
+			$sector_state{$object}{state} = 0;
+		}
+
+		if ($ares_map_config{$object}{objective}) {
+			manage_objectives($object, $ares_map_config{$object}, \%player_list);
+		};
+
+		if ($ares_map_config{$object}{can_capture}) {
+			manage_control_points($object, $ares_map_config{$object}, \%player_list);
+		}
+	};
+
+	pay_players(\%player_list, \%ares_map_config);
+};
+
+## manage_objectives
+# Determine what to do with the objectives. Mainly give alerts i enemies are near.
+# INPUT1: object name
+# INPUT2: object hash
+# INPUT3: player list hash
+sub manage_objectives {
+	my $name = $_[0];
+	my %object = %{$_[1]};
+	my %player_list = %{$_[2]};
+
+	Player: foreach my $player (keys %player_list) {
+		my $dist = stard_loc_distance($player_list{$player}{sector}, $object{sector});
+		if (!$player_list{$player}{faction} || $player_list{$player}{faction} == $object{owner}) {
+			next Player;
+		}
+		if (defined $dist && $dist == 0) {
+			ares_notify_faction($object{owner}, "Our Base: $name($object{sector}) is under attack!");
+			stdout_log("$name($object{sector}) is under attack.", 6);
+		}
+		elsif (defined $dist && $dist > 0 && $dist <= 3) {
+			ares_notify_faction($object{owner}, "Our Base: $name($object{sector}) has detected nearby enemies!");
+			stdout_log("$name($object{sector}) has nearby enemies", 6);
+		}
+		last Player;
+	};	
+}
+
+## manage_control_points
+# Determine what to do with the control points. Who owns them, who's caputing them, etc.
+# INPUT1: object name
+# INPUT2: object hash
+# INPUT3: player list hash
+sub manage_control_points {
+	my $name = $_[0];
+	my %object = %{$_[1]};
+	my %player_list = %{$_[2]};
+
+	my $status = sector_status($object{sector}, \%player_list);
+	my $status_faction_name = ares_get_faction_name($status);
+	stdout_log("Object: $name status: $status", 6);
+
+	if (!$sector_state{$name}{transition} || $sector_state{$name}{transition} != $status) {
+		$sector_state{$name}{transition} = 0;
+		$sector_state{$name}{elapsed} = 0;
+	}
+
+	if (
+		$sector_state{$name}{state} != $status &&
+		$status > 0
+	){
+		if ($sector_state{$name}{elapsed} == 0) {
+			stard_broadcast("$status_faction_name is claiming $name($object{sector})!");
+			stdout_log("$status_faction_name is claiming $name($object{sector}).", 6);
+		}
+		if ($sector_state{$name}{elapsed} >= $config{General}{capture_time}) {
+			$sector_state{$name}{state} = $status;
+			stard_broadcast("$status_faction_name has claimed $name($object{sector})!");
+			stdout_log("$status_faction_name has claimed $name($object{sector}).", 6);
+			
+			ares_write_object_status($name, $status);
+			if ($object{switch_owners_on_capture}) {
+				my %newobj = %object;
+				$newobj{owner} = $status;
+				ares_place_object($name, \%newobj);
+			}
+
+			if ($object{defenders}) {
+				my @defenders = split(",", $object{defenders});
+				my @pos = (); 
+	
+				if ($object{defender_pos}) {
+					@pos = split(",", $object{defender_pos});
+				};
+
+				ares_spawn_mobs(\@defenders, \@pos, ares_get_faction_npc($status), $object{sector}, 1);
+			}
+		}
+		else {
+			$sector_state{$name}{transition} = $status;
+			$sector_state{$name}{elapsed} += $config{General}{poll_time};
+		};
+	}
+	elsif (
+		$status == -1
+	){
+		notify_every("$name($object{sector}) is UNDER Attack!",15, $name);
+		stdout_log("$name($object{sector}) is under attack", 6);
+	}
+	else {
+		$sector_state{$name}{elapsed} = 0;
+	}
+}
+	
+## pay_players
+# Gives all players the credits they deserve
+# INPUT1: player_list hash
+# INPUT2: map configuration hash
+sub pay_players {
+	my %player_list = %{$_[0]};
+	my %ares_map_config = %{$_[1]}; 
+
+	# Determine how much total value in stations each faction has
+	my %faction_payout;
+	foreach my $object (keys %ares_map_config) {
+		if ($sector_state{$object}{state}) {
+			$faction_payout{$sector_state{$object}{state}} += $ares_map_config{$object}{value};
+		}
+	}
+
+	# Pay each faction's members
+	Faction: foreach my $faction (keys %faction_payout) {
+		my @payable_members = ();
+
+		if (!$faction || $faction <= 0) {
+			next Faction;
+		}
+
+		foreach my $player (keys %player_list) {
+			if ( defined $player_list{$player}{faction} && $player_list{$player}{faction} == $faction) {
+				if (!stard_is_admin($player)) {
+					push(@payable_members, $player);
+				}
+			}
+		}
+		my %member_data = %{stard_faction_list_members($faction)};
+		my @members = keys %member_data;
+
+		if (!@payable_members) {
+			stdout_log("$faction does not have any payable players", 5);
+			next Faction;
+		}
+		my $player_payout = $faction_payout{$faction} / @payable_members * $config{General}{credit_multiplier} * $config{General}{poll_time};
+		foreach my $member (@payable_members) {
+			stdout_log("Giving '$member' $player_payout credits", 6);
+			if (!stard_give_credits($member, $player_payout)) {
+				print stard_last_output();
+				stdout_log("Failed to give '$member' $player_payout credits", 3);
+			}
+		}
+	}
+} 
+
+## sector status
+# Determine who is in the given sector and what the ownership would be based on that
+# INPUT1: sector coords (string like "1 1 1"
+# INPUT2: player_list (generally from stard_player_list())
+# OUTPUT: Sector ownership based on occupation (0 if no one is there, -1 if contested, factionid if only one faction is present)
+sub sector_status {
+	my $sector = $_[0];
+	my %player_list = %{$_[1]};
+
+	my $ownership = 0;
+
+	Player: foreach my $player (keys %player_list) {
+		if (stard_is_admin($player)) {
+			next Player;
+		}
+		# player is not spawned or dead
+		if (!$player_list{$player}{pos}) {
+			next Player;
+		}
+		stdout_log("Checking '$player' in sector '$player_list{$player}{sector}' against '$sector'", 7);
+		if ($player_list{$player}{sector} eq $sector) {
+			if (!$ownership || $player_list{$player}{faction} == $ownership) {
+				$ownership = $player_list{$player}{faction};
+			}
+			else {
+				return -1;
+			}
+		}
+	}
+
+	# If players are in the sector, check for other factioned stuff that 
+	# are against them.
+	if ($ownership) {
+		my %sector_status = %{stard_sector_info($sector)};
+		my %objects = ();
+		if ($sector_status{entity}) {
+			%objects = %{$sector_status{entity}};
+		}
+		
+		Object: foreach my $object (keys %objects) {
+			my $faction_id = $objects{$object}{faction};
+			if ($faction_id == -1) {
+				return -1;
+			}
+			if ($faction_id <= 0) {
+				next Object;
+			};
+			if (
+				$faction_id != $ownership &&
+				$faction_id != ares_get_faction_npc($ownership)
+			) {
+				return -1;
+			}
+		}
+	}
+	return $ownership;
+}
+## completed
+# Game is over, we're just letting people know 
+# and waiting for an admin to start a new one.
+# INPUT1: time we've been in this state
+sub completed {
+	my $state_time = $_[0];
+	if ($config{General}{autostart}) {
+		my $remaining = 60 - $state_time;
+		notify_every("Game is Complete. A new game will start in $remaining seconds.", 30);
+		stdout_log("Game is complete. New game will start in $remaining sec", 6);
+		if ($remaining <= 0) {
+			my $map = ares_vote_win();
+			stdout_log("Loading new game with map $map", 5);
+			system("perl $ares_home/commands/ares_start_game '' $map");
+		}
+		
+	}
+	else {
+		notify_every("Game is Complete. Ask an Admin to start a new Game", 60);
+		stdout_log("Game is complete. Run !ares_start_game <map> to start new game", 5);
+	}
+	
+	return;
+}
+
+
+## notify_every
+# Only send out the given message if we haven't sent out a notice in the last (interval) seconds.
+# INPUT1: message to send
+# INPUT2: how often to send it.
+# INPUT3: notification type
+sub notify_every {
+	my $message = $_[0];
+	my $interval =$_[1];
+	my $type = $_[2];
+
+	if (!$type) {
+		$type = "General";
+	}
+
+
+	$last_notification{$type} += $config{General}{poll_time};
+	if ($last_notification{$type} >= $interval) {
+		my @feed = split("\n", $message);
+		foreach my $line (@feed) {
+			stard_broadcast($line);
+		}
+		$last_notification{$type} = 0;
+	}
+}
+
+
+## corral_factions
+# Keep players at their home base (only used before the game starts)
+sub corral_factions {
+	my %player_list = %{$_[0]};
+	
+	my @factions = @{ares_get_factions()};
+	foreach my $faction (@factions) {
+		my @members = @{ares_get_faction_members($faction)};
+		my $home = ares_get_faction_home($faction);
+		foreach my $player (@members) {
+			if ($player_list{$player} && $player_list{$player}{sector} ne $home) {
+				stard_pm($player, "You are not allowed to leave your home sector yet!");
+				stdout_log("$player has escaped their home base sector. Putting them back", 5);
+				if(!stard_change_sector_for($player, $home)) {
+					print stard_last_output();
+					stdout_log("Failed putting $player back in their home sector!", 4);
+				};
+			};
+		};
+	};
+}
+
+
+
+
+1;

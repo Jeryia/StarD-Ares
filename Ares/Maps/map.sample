@@ -1,0 +1,38 @@
+# Sample map config showing all available options and hopefully explaining them
+
+
+[object_name]
+# sector the station/object is to be spawned in
+sector = '3 0 3'
+# blueprint of the object to spawn
+blueprint = 'Ares Mining Outpost'
+# Type of object. currently does nothing
+type = 'station'
+# value of the station. This is used as a multiplier on the credits a faction 
+# gets for owning this station. 
+value = 0.5
+# owner of the station. -2 is trading guild, -1 is pirates, 0 is unowned, 1 is 
+# team 1, 2 is team 2.
+owner = -2
+# Set to one if you want this to be a game objective. Game objectives are 
+# spawned with an npc faction allied with the owner (given above). These are 
+# generally referred to as bases in game, and if a faction no longer has any, 
+# they lose the game.
+objective = 0
+# 1 if this can be captured. If it an be captured, then if a player is in the 
+# same sector for a given period of time they gain ownership of this.
+can_capture = 1
+# If this object is captured by a player, change this object to be owned by 
+# that players faction (meaning the actual entity not just a claim).
+switch_owners_on_capture=1
+# blueprints of pirate ships to spawn at the beginning of the game to guard the
+# object.
+pirates = blueprint 1,blueprint 2,blueprint 3
+# Positions of the spawned pirate ships (comma seperated list, the first one 
+# corresponds with the first blueprint, and so on)
+pirate_pos = 100 100 0,-200 -10 -20,-50 20 50
+# When a faction captures this station, spawn these defenders that are allied with those who captured it.
+defenders = blueprint 1,blueprint 2
+# positions of the defender ships when they spawn. (comma seperated list, the 
+# first one corresponds with the first blueprint, and so on)
+defender_pos = 100 100 0,-200 -10 -20

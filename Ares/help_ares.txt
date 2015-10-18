@@ -1,0 +1,5 @@
+!status <type> - Displays the information on the status of the game, all bases, and all control points. Type can be either base or control, if type isn't given, everything is printed.
+!ares_help - Gives you suggestions on what to do.
+!ares_vote - Vote for the map to play in the next game
+!ares_maps - Get the list of available maps.
+!ares_start_game <map> - Force the start of a new game with the given map (admins only)

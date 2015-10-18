@@ -1,0 +1,74 @@
+
+[Alpha_base]
+sector = '6 0 0',
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 1
+owner = 1
+objective = 1
+can_capture = 0
+home = 1
+
+[Beta_base]
+sector ='-6 0 0'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 1
+owner = 2
+objective = 1
+can_capture = 0
+home = 1
+
+[Alpha_shop]
+sector = '7 0 0'
+blueprint = 'Ares Shop'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 0
+
+[Beta_shop]
+sector = '-7 0 0'
+blueprint = 'Ares Home Base'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 0
+
+[mining_station_alpha1]
+sector = '3 0 4'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 1
+
+[mining_station_beta1]
+sector = '-3 0 -4'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner	= -2
+objective = 0
+can_capture = 1
+
+[mining_station_alpha2]
+sector = '3 0 -4'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner	= -2
+objective = 0
+can_capture = 1
+
+[mining_station_beta2]
+sector = '-3 0 4'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 1

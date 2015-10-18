@@ -1,0 +1,95 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("./lib");
+use lib("../../lib");
+use ares_core;
+use ares_map;
+use ares_game;
+use ares_object;
+use stard_lib;
+use stard_log;
+
+$|=1;
+
+ares_setup_run_env('.');
+stard_setup_run_env("./../../");
+
+main(@ARGV);
+exit 0;
+##############################################
+
+## Real work begins
+sub main {
+	my $entity = $_[0];
+	$entity=~s/^ENTITY_//i;
+
+	
+	my $map = ares_get_cur_map();
+	my $faction_concerned;
+	my %ares_map_config;
+	my $game_state;
+	my $objectives;
+
+
+	if (!$map =~/\S/) {
+		exit 0;
+	}
+	%ares_map_config = %{ares_get_map_config()};
+	$game_state = ares_get_game_state();
+
+	
+
+	if ($game_state ne 'in_progress') {
+		exit 0;
+	}
+
+	if (!$entity || !$entity=~/^SPACESTATION_/) {
+		exit 0;
+	};
+
+	$faction_concerned = check_objective_destroyed($entity);
+
+	if (!$faction_concerned) {
+		
+		exit 0;
+	}
+
+	$objectives = ares_objectives_owned($faction_concerned);
+
+	if ($objectives == 0) {
+		ares_defeat($faction_concerned);
+	};
+
+};
+
+## check_objective_destroyed
+# check to see if given entity is an objective, if it is, return the faction it belonged to.
+# INPUT1: entity name
+# OUTPUT: If entity is an objective, return the faction id of the owner, otherwise 0.
+sub check_objective_destroyed {
+	my $entity = $_[0];
+	my %ares_map_config = %{ares_get_map_config()};
+	my $faction_concerned = 0;
+
+
+	
+	Entity: foreach my $object (keys %ares_map_config) {
+		if (!$ares_map_config{$object}{objective}) {
+			next Entity;
+		};
+		my $check_entity = ares_object_to_entity($object);
+		if ($entity eq "SPACESTATION_$check_entity") {
+			ares_write_object_status($object, '0');
+			print "$entity:$object destroyed! owner: " .$ares_map_config{$object}{owner} . "\n";
+			$faction_concerned = $ares_map_config{$object}{owner};
+			last Entity;
+		}
+		else {
+			print "$entity is not an objective. $check_entity\n";
+		};
+	};
+	return $faction_concerned;
+};
+
