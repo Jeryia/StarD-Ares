@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 ## setup environment
-use lib("./lib");
 use lib("../../lib");
-use ares_core;
-use ares_game;
 use stard_lib;
 use stard_log;
+use lib("./lib");
+use ares_core;
+use ares_game;
 $|=1;
 
 my $ares_spool = "$ares_home/spool";
@@ -24,38 +24,44 @@ exit 0;
 
 sub main {
 	my $player = $_[0];
+	my $topic = $_[1];
 	my $game_state = ares_get_game_state();
-
-	stard_broadcast("Ares help info has been sent to you $player!");
-	if ($game_state eq "waiting_players") {
-		stard_pm($player, "The game is currently waiting on players to join.");
-		stard_pm($player, "You may use this time to upload any blueprints"); 
-		stard_pm($player, "you want to use, spawn ships or strategize with");
-		stard_pm($player, "your faction.");
+	
+	if (!$topic) {
+		usage($player);
 	}
-	elsif ($game_state eq "waiting_start") {
-		stard_pm($player, "The game will start soon.");
-		stard_pm($player, "You may use this time to upload any blueprints"); 
-		stard_pm($player, "you want to use, spawn ships or strategize with");
-		stard_pm($player, "your faction.");
+	elsif ($topic eq 'control') {
+		stard_pm($player, "control points");
+		stard_pm($player, "Desc: control points are points you can capture to gain rescources.");
+		stard_pm($player, "Capturing: destroy all enemies in the sector of the control point. Then stay in that sector until you get a message that you captured the control point. You can see who owns the control points with the !status command");
+		stard_pm($player, "Locations: use !status control to see the locations of all control points");
 	}
-	elsif ($game_state eq "in_progress") {
-		stard_pm($player, "The game is currently in progress");
-		stard_pm($player, "Your objective is to capture control points to ");
-		stard_pm($player, "get money, and destroy your enemy's base(s).");
-		stard_pm($player, "To capture control points, you need to be in");
-		stard_pm($player, "the same sector as it, and have no enemies in that");
-		stard_pm($player, "sector. it will take about 60 seconds to capture a ");
-		stard_pm($player, "control point");
+	elsif ($topic eq "base") {
+		stard_pm($player, "bases");
+		stard_pm($player, "Desc: Bases are the primary objectives of the game. Each faction will start with at least one base. you win by destroying all of your enemy's bases.");
+		stard_pm($player, "Locations: use !status base to see the locations of all bases");
 	}
-	elsif ($game_state eq "completed") {
-		stard_pm($player, "The game is completed.");
-		stard_pm($player, "A new one may start soon. Ask an admin.");
+	elsif ($topic eq "money") {
+		stard_pm($player, "money");
+		stard_pm($player, "Credits are distributed to all players every few seconds. The amount of credits given is based on the number of bases and control points you have. The more bases and control points in your control, the more you get");
+	}
+	elsif ($topic eq "building") {
+		stard_pm($player, "building");
+		stard_pm($player, "Building is permitted during a game in ares. However, it will cost you a considerable amount of time. That could cost your team control points.");
+		stard_pm($player, "It is reccommended that you instread build outside the game, and upload the blueprints.");
 	}
 	else {
-		stard_pm($player, "Game is currenly setting itself up");
-		stard_pm($player, "Please Wait...");
+		usage($player);
 	}
-	stard_pm($player, "You can check the locations of the bases and control");
-	stard_pm($player, "points at any time with the !status command.");
 };	
+		
+sub usage {
+	my $player = $_[0];
+	stard_pm($player, "Usage: !ares_help <topic>";
+	stard_pm($player, "Available Topics:";
+	stard_pm($player, "control - about control points";
+	stard_pm($player, "base - about bases";
+	stard_pm($player, "money - how you get credits";
+	stard_pm($player, "building - about building ships";
+	exit 0;
+}
