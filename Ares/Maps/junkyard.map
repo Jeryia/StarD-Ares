@@ -39,7 +39,7 @@ can_capture = 0
 
 [recycler_alpha1]
 sector = 3 0 3
-blueprint = 'Ares Mining Outpost'
+blueprint = 'Ares Recycling Station'
 type = 'station'
 value = 0.5
 owner = -2
@@ -52,7 +52,7 @@ defender_pos = 100 100 0,-200 -10 -20
 
 [recycler_beta1]
 sector = '-3 0 5'
-blueprint = 'Ares Mining Outpost'
+blueprint = 'Ares Recycling Station'
 type = 'station'
 value = 0.5
 owner	= -2
@@ -65,7 +65,7 @@ defender_pos = 100 100 0,-200 -10 -20
 
 [recycler_alpha2]
 sector = '1 0 5'
-blueprint = 'Ares Mining Outpost'
+blueprint = 'Ares Recycling Station'
 type = 'station'
 value = 0.5
 owner	= -2
@@ -80,7 +80,7 @@ doodad_pos = -200 -7 -61
 
 [recycler_beta2]
 sector = '-1 0 3'
-blueprint = 'Ares Mining Outpost'
+blueprint = 'Ares Recycling Station'
 type = 'station'
 value = 0.5
 owner = -2
