@@ -50,6 +50,11 @@ sub main {
 		stard_pm($player, "Building is permitted during a game in ares. However, it will cost you a considerable amount of time. That could cost your team control points.");
 		stard_pm($player, "It is reccommended that you instread build outside the game, and upload the blueprints.");
 	}
+	elsif ($topic eq "voting") {
+		stard_pm($player, "voting");
+		stard_pm($player, "You are permitted to vote on the map to play on next game");
+		stard_pm($player, "Type !ares_maps to see a list of available maps, and !ares_vote <map> to vote for the next map to play");
+	}
 	else {
 		usage($player);
 	}
@@ -63,5 +68,6 @@ sub usage {
 	stard_pm($player, "base - about bases";
 	stard_pm($player, "money - how you get credits";
 	stard_pm($player, "building - about building ships";
+	stard_pm($player, "voting - how to vote for the next map";
 	exit 0;
 }
