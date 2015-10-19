@@ -18,6 +18,8 @@ my $ares_home = '.';
 my $stard_home= "$ares_home/../..";
 my $ares_state = "$ares_home/State";
 my $ares_maps = "$ares_home/Maps";
+mkdir($ares_state);
+
 use stard_lib;
 use stard_log;
 
