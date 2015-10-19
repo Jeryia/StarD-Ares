@@ -8,6 +8,7 @@ use ares_core;
 use ares_game;
 $|=1;
 
+my $ares_home = '.';
 my $ares_spool = "$ares_home/spool";
 my $stard_home = "$ares_home/../..";
 
@@ -62,12 +63,12 @@ sub main {
 		
 sub usage {
 	my $player = $_[0];
-	stard_pm($player, "Usage: !ares_help <topic>";
-	stard_pm($player, "Available Topics:";
-	stard_pm($player, "control - about control points";
-	stard_pm($player, "base - about bases";
-	stard_pm($player, "money - how you get credits";
-	stard_pm($player, "building - about building ships";
-	stard_pm($player, "voting - how to vote for the next map";
+	stard_pm($player, "Usage: !ares_help <topic>");
+	stard_pm($player, "Available Topics:");
+	stard_pm($player, "control - about control points");
+	stard_pm($player, "base - about bases");
+	stard_pm($player, "money - how you get credits");
+	stard_pm($player, "building - about building ships");
+	stard_pm($player, "voting - how to vote for the next map");
 	exit 0;
 }

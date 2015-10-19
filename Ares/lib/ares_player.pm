@@ -79,7 +79,7 @@ sub ares_new_player_setup {
 	stdout_log("Setting up new player '$player'", 6);
 	stard_give_all_items($player, -1000000);
 	if ($player_info{smname}) {
-		if (ares_check_account($player_info{smname})) {
+		if (ares_check_account($player_info{smname}) && $player_info{smname} ne 'null') {
 			stdout_log("'$player' detected using multiple accounts. Setting credits to nothing...", 5);
 			stard_broadcast("Anti-cheat: multiple players under same account detected '$player'. Player gets no starting rescources...");
 			ares_set_player_credits($player, 0);

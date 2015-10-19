@@ -14,9 +14,10 @@ use stard_log;
 ares_setup_run_env('.');
 stard_setup_run_env("./../../");
 
+my $ares_player_state = "./State/Players";
+
 main(@ARGV);
 
-my $ares_player_state = "./State/Players"
 
 exit 0;
 ##############################################

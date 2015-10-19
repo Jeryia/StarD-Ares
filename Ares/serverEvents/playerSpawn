@@ -16,6 +16,8 @@ $|=1;
 ares_setup_run_env('.');
 stard_setup_run_env("./../../");
 
+my $ares_player_state = "./State/Players";
+
 main(@ARGV);
 exit 0;
 ##############################################
@@ -41,7 +43,10 @@ sub main {
 	}
 
 	# Put them home. safeguard against using opposing faction base as spawn.
-	#stard_change_sector_for($player, ares_get_faction_home(ares_get_player_faction($player)));
+	if (-e "$ares_player_state/$player.dead") {
+		stard_change_sector_for($player, ares_get_faction_home(ares_get_player_faction($player)));
+		unlink("$ares_player_state/$player.dead");
+	}
 
 	ares_player_unlock($lock_fh);
 }
