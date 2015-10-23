@@ -1,9 +1,11 @@
 package ares_map;
-use lib("./lib");
-use lib("../../lib");
 use File::Copy;
+
+use lib("./lib");
 use ares_core;
 use ares_faction;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 

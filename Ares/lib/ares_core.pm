@@ -1,5 +1,5 @@
 package ares_core;
-use lib("./lib");
+
 use lib("../../lib");
 use stard_lib;
 use stard_log;
@@ -7,9 +7,11 @@ use stard_log;
 ## global settings (should only be set once, and never changed again)
 our $ares_home;
 our $ares_state;
+our $ares_data;
 our $ares_state_faction;
-our $ares_maps;
 our $ares_state_player;
+our $ares_state_objects;
+our $ares_maps;
 our %ares_config;
 
 my %blank_hash = ();
@@ -31,6 +33,8 @@ sub ares_setup_run_env {
 	$ares_state = "$ares_home/State";
 	$ares_state_faction = "$ares_state/Factions";
 	$ares_state_player = "$ares_state/Players";
+	$ares_state_objects = "$ares_state/Objects";
+	$ares_data = "$ares_home/data";
 	$ares_maps = "$ares_home/Maps";
 
 	stard_setup_run_env($stard_home);

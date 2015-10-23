@@ -1,11 +1,13 @@
 #!perl
+use strict;
 use File::Basename;
 
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_game;
 use ares_faction;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 

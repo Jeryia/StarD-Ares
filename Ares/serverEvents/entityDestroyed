@@ -3,11 +3,12 @@ use strict;
 use warnings;
 
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_map;
 use ares_game;
 use ares_object;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 

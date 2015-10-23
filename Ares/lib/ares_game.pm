@@ -1,10 +1,11 @@
 package ares_game;
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_faction;
 use ares_map;
 use ares_object;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 
@@ -13,7 +14,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_set_game_state ares_get_game_state ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned);
+@EXPORT = qw(ares_set_game_state ares_get_game_state ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned ares_get_credit_scaling ares_setup_game_env);
 
 
 ## ares_set_game_state
@@ -133,18 +134,18 @@ sub ares_clean_all {
 	ares_set_game_state("completed");
 	stdout_log("Cleaning up everything from the last game, and a little more", 5);
 
-	my %faction_list = %{stard_faction_list_bid()};
+	my @factions = @{ares_get_factions()};
 
-
-	foreach my $faction_id (keys %faction_list) {
+	foreach my $faction_id (@factions) {
 		if ($faction_id > 0) {
-			stdout_log("Deleting faction '$faction_id'", 6);
-			unlink("$ares_core::ares_state_faction/$faction_id/name");
+			my @members = @{ares_get_faction_members($faction_id)};
+			foreach my $member (@members) {
+				ares_unfaction_player($member);
+			}
+			stdout_log("Clearing faction '$faction_id'", 6);
 			unlink("$ares_core::ares_state_faction/$faction_id/State");
 			unlink("$ares_core::ares_state_faction/$faction_id/Players");
 			unlink("$ares_core::ares_state_faction/$faction_id/Home");
-			rmdir("$ares_core::ares_state_faction/$faction_id");
-			stard_faction_delete($faction_id);
 		};
 	};
 
@@ -172,6 +173,7 @@ sub ares_clean_all {
 			unlink("$ares_core::ares_state/Objects/$entity");
 			unlink("$ares_core::ares_state/Objects/$entity.entity");
 		};
+
 		unlink("$ares_core::ares_state/map");
 		unlink("$ares_core::ares_state/cur.map");
 		unlink("$ares_core::ares_state/Accounts");
@@ -200,7 +202,6 @@ sub ares_clean_all {
 		! ($ares_core::ares_state =~/\.\.\/$/)
 	) {
 		stdout_log("Cleaning State Directory", 6);
-		rmtree("$ares_core::ares_state/Factions");
 		rmtree("$ares_core::ares_state/Objects");
 		rmtree("$ares_core::ares_state/Players");
 	}
@@ -228,6 +229,32 @@ sub ares_objectives_owned {
 		};
 	};
 };
+
+
+## ares_get_credit_scaling
+# Get the current credit scaling amount
+# OUTPUT: amount that the credit allowance to players is multiplied by (based on time in game)
+sub ares_get_credit_scaling {
+	my @stat = stat("$ares_core::ares_state/Status");
+	my $game_start = $stat[9];
+	my $game_time = time() - $game_start;
+
+	# How much to increase the credit amount given to factions every 5 minutes.
+	my $increase_rate = $ares_core::ares_config{General}{credit_scaling};
+
+	# 300 is 5 minutes in seconds
+	return 1 + ($increase_rate/300 * $game_time);
+}
+
+## ares_setup_game_env
+# Sets up everything needed to setup a new game
+sub ares_setup_game_env {
+	mkdir($ares_core::ares_state);
+	mkdir($ares_core::ares_state_faction);
+	mkdir($ares_core::ares_state_player);
+	mkdir($ares_core::ares_state_objects);
+	mkdir($ares_core::ares_data);
+}
 
 
 1;

@@ -3,11 +3,12 @@ use strict;
 use warnings;
 
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_game;
 use ares_faction;
 use ares_player;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 
@@ -31,10 +32,7 @@ sub main {
 
 	my $game_state = ares_get_game_state();
 
-	if (!(
-		$game_state eq 'waiting_for_players' ||
-		$game_state eq 'waiting_start'
-	)) {
+	if ($game_state eq 'in_progress') {
 		stard_pm($player, "Faction changing is not permitted at this time");
 		ares_fix_faction($player);
 		ares_player_unlock($player);

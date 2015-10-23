@@ -3,13 +3,14 @@ use strict;
 use File::Copy;
 
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_map;
 use ares_game;
 use ares_object;
 use ares_player;
 use ares_faction;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 
@@ -42,6 +43,8 @@ sub main {
 		stard_broadcast("$player, You are not an admin, and cannot run that command.");
 		exit 1;
 	}
+	stard_broadcast("Setting up new game");
+	stard_broadcast("Please Standby...");
 
 	if (!$map && $config{General}{default_map}) {
 		$map = $config{General}{default_map};
@@ -57,6 +60,7 @@ sub main {
 	# wipe out the current setup
 	ares_clean_all();
 
+	ares_setup_game_env();
 	# prep new map config
 	ares_set_cur_map($map);
 	my %ares_map_config = %{ares_get_raw_map_config("$ares_maps/$map.map")};
@@ -73,90 +77,117 @@ sub main {
 
 	assign_remaining_players();
 	ares_set_game_state("");
+	stard_broadcast("Game Setup Complete!");
 }
 
 ## ares_setup_factions
 # Setup the factions needed to play the game.
 sub ares_setup_factions {
-	my @teams;
-	stdout_log("Creating Factions", 5);
-	if (-r "$ares_home/teams.cfg") {
-		open(my $teams_fh, "<", "$ares_home/teams.cfg");
-		@teams = <$teams_fh>;
+	my @team_names;
+	stdout_log("Setting Up Factions", 5);
+	if (-r "$ares_home/data/team_names") {
+		open(my $teams_fh, "<", "$ares_home/team_names");
+		@team_names = <$teams_fh>;
 		close($teams_fh);
+		foreach my $team (@team_names) {
+			$team=~s/^\s+//;
+			$team=~s/\s+$//;
+		}
 	}
 	else {
-		@teams = ("Alpha Squadren", "Beta Squadren", "Gamma Squadren", "Delta Squaldren");
+		@team_names = ("Alpha Squadren", "Beta Squadren", "Gamma Squadren", "Delta Squaldren");
 	};
 
 	my %faction_list = %{stard_faction_list_bid()};
 	my %faction_nlist;
 
 
-	for (my $teamNum = 0; $teamNum < $config{General}{team_number}; $teamNum++) {
-		my $team = $teams[$teamNum];
-		my $npcTeam = "$team NPC";
-		if(!stard_faction_create($team, '')) {
-			stard_broadcast("Failed to start game...");
-			print stard_last_output();
-			stdout_log("Failed to create faction $team. Aborting start game", 1);
-			exit 1;
+	for (my $teamNum = 1; $teamNum <= $config{General}{team_number}; $teamNum++) {
+		my $team_name = $team_names[$teamNum-1];
+		my $faction_id = ares_team_to_faction($teamNum);
+		my $npc_faction_id = ares_get_faction_npc($faction_id);
+		my $npc_name = "$team_name NPC";
+
+		if (
+			!$faction_id ||
+			!$faction_list{$faction_id}
+		) {
+			stdout_log("Creating faction $team_name", 5);
+			if(!stard_faction_create($team_name, '')) {
+				stard_broadcast("Failed to start game...");
+				print stard_last_output();
+				stdout_log("Failed to create faction $team_name. Aborting start game", 1);
+				exit 1;
+			}
+			my %faction_nlist=%{stard_faction_list_bname()};
+			$faction_id = $faction_nlist{$team_name}{id};
+
+			mkdir("$ares_state_faction");
+			mkdir("$ares_state_faction/$faction_id");
+			ares_set_team_faction($teamNum, $faction_id);
+			ares_set_faction_name($faction_id, $team_name);
 		}
-		if(!stard_faction_create($npcTeam, '')) {
-			stard_broadcast("Failed to start game...");
-			print stard_last_output();
-			stdout_log("Failed to create faction $npcTeam. Aborting start game", 1);
-			exit 1;
-		}
 
-		%faction_nlist=%{stard_faction_list_bname()};
-
-		mkdir "$ares_state_faction";
-
-		open(my $team_fh, ">", "$ares_state_faction/team$teamNum");
-		print $team_fh $faction_nlist{$team}{id};
-		close($team_fh);
-
-		ares_set_faction_name($faction_nlist{$team}{id}, $team);
 		
-		ares_set_faction_state($faction_nlist{$team}{id}, "Active");
-		open($team_fh, ">", "$ares_state_faction/$faction_nlist{$team}{id}/State");
-		print $team_fh "Active";
-		close($team_fh);
-		ares_set_faction_npc($faction_nlist{$team}{id}, $faction_nlist{$npcTeam}{id});
-		stdout_log("Faction '$team' created", 6);
+		if (
+			!$npc_faction_id ||
+			!$faction_list{$npc_faction_id}
+		) {
+			stdout_log("Creating faction $npc_name", 5);
+			if (!stard_faction_create($npc_name, '')) {
+				stard_broadcast("Failed to start game...");
+				print stard_last_output();
+				stdout_log("Failed to create faction $npc_name. Aborting start game", 1);
+				exit 1;
+			}
+			my %faction_nlist=%{stard_faction_list_bname()};
+			$npc_faction_id = $faction_nlist{$npc_name}{id};
+			ares_set_faction_npc($faction_id, $npc_faction_id);
+		}
+
+		ares_set_faction_state($faction_id, "Active");
+		stdout_log("Faction '$team_name' is setup", 6);
 	};
 
-	sleep 1;
 
-	%faction_list = %{stard_faction_list_bid()};
-	if(!stard_faction_set_all_relations('enemy')) {
-		print stard_last_output();
-		stdout_log("Failed setting relations between all factions to enemy.", 1);
-	}
-	stdout_log("Setting relations between all factions to enemy.", 6);
-	foreach my $faction_id (keys %faction_list) {
+	my @main_factions = @{ares_get_factions()};
+	my @factions = @{ares_get_all_factions()};
+	foreach my $faction_id (@main_factions) {
 		if ($faction_id > 0) {
-			open(my $team_fh, "<", "$ares_state_faction/$faction_id/NPC");
-			my $npc = join('', <$team_fh>);
-			close($team_fh);
-	
-	
-			if ($npc) {
-				if (!stard_faction_mod_relations($faction_id, $npc, 'ally')) {
-					print stard_last_output();
-					stdout_log("Failed to set relations between '$faction_id' and '$npc' to ally. Aborting stat game...", 1);
-					exit 1;
+			my $npc_faction_id = ares_get_faction_npc($faction_id);
+				
+			Faction2: foreach my $faction_id2 (@factions) {
+				if ($faction_id2 == 0) {
+					next Faction2;
 				}
-				stdout_log("Setting relations between '$faction_id' and '$npc' to ally.", 6);
+				if ($faction_id2 == $npc_faction_id) {
+					stdout_log("Setting relations between '$faction_id' and '$faction_id2' to ally.", 6);
+					if (!stard_faction_mod_relations($faction_id, $faction_id2, 'ally')) {
+						print stard_last_output();
+						stdout_log("Failed to set relations between '$faction_id' and '$faction_id2' to ally. Aborting start game...", 1);
+						exit 1;
+					}
+				}
+				else {
+					stdout_log("Setting relations between '$faction_id' and '$faction_id2' to enemy.", 6);
+					if (!stard_faction_mod_relations($faction_id, $faction_id2, 'enemy')) {
+						print stard_last_output();
+						stdout_log("Failed to set relations between '$faction_id' and '$faction_id2' to enemy. Aborting start game...", 1);
+						exit 1;
+					}
+				}
 			}
-			stdout_log("Setting relations between '$faction_id' and '$npc' to neutral.", 6);
+			stdout_log("Setting relations between '$faction_id' and '-2' to neutral.", 6);
 			if(!stard_faction_mod_relations($faction_id, -2, 'neutral')) {
 				print stard_last_output();
-				stdout_log("Failed setting relations between '$faction_id' and '$npc' to neutral.", 1);
-			}
+				stdout_log("Failed setting relations between '$faction_id' and '-2' to neutral.", 1);
+			};
+			stdout_log("Setting relations between '$faction_id' and '-1' to enemy.", 6);
+			if(!stard_faction_mod_relations($faction_id, -1, 'enemy')) {
+				print stard_last_output();
+				stdout_log("Failed setting relations between '$faction_id' and '-1' to enemy.", 1);
+			};
 		};
-		
 	};
 };
 

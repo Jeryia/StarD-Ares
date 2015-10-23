@@ -3,7 +3,6 @@ use strict;
 use warnings;
 
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_game;
 use ares_object;
@@ -12,30 +11,33 @@ use ares_player;
 use ares_vote;
 use ares_map;
 
+use lib("../../lib");
+use stard_lib;
+use stard_log;
+
 $| =1;
 
 my $ares_home = '.';
 my $stard_home= "$ares_home/../..";
 my $ares_state = "$ares_home/State";
 my $ares_maps = "$ares_home/Maps";
-mkdir($ares_state);
 
-use stard_lib;
-use stard_log;
 
 require "$stard_home/lib/stard_lib.pm";
-#stard_setup_run_env($stard_home);
 ares_setup_run_env($ares_home);
 $stard_home = "./../..";
 
-#require "$stard_home/lib/stard_lib.pm";
 stard_setup_run_env($stard_home);
 
 set_loglevel(6);
 
 
+# Stores the stard configuration.
 my %config = %{stard_read_config("$ares_home/ares.cfg")};
+# Stores the last time a certain type of notification was given for the use of not spamming players
 my %last_notification = ();
+# global variable used to store the percentage increate that giving credits recieves.
+
 
 my %sector_state;
 
@@ -48,6 +50,7 @@ exit 0;
 sub main {
 	my %ares_map_config;
 	my $state_time = 0;
+	ares_setup_game_env();
 	stdout_log("Ares Daemon Started", 5);
 
 	my $status;
@@ -361,17 +364,24 @@ sub pay_players {
 	my %player_list = %{$_[0]};
 	my %ares_map_config = %{$_[1]}; 
 
+
+	my $total_players = keys %player_list;
 	# Determine how much total value in stations each faction has
-	my %faction_payout;
+	my %faction_value;
 	foreach my $object (keys %ares_map_config) {
 		if ($sector_state{$object}{state}) {
-			$faction_payout{$sector_state{$object}{state}} += $ares_map_config{$object}{value};
+			$faction_value{$sector_state{$object}{state}} += $ares_map_config{$object}{value};
 		}
 	}
 
 	# Pay each faction's members
-	Faction: foreach my $faction (keys %faction_payout) {
+	Faction: foreach my $faction (keys %faction_value) {
 		my @payable_members = ();
+		my $faction_credits = $faction_value{$faction};
+		$faction_credits *= $config{General}{credit_multiplier};
+		$faction_credits *= ares_get_credit_scaling(); 
+		$faction_credits *= $config{General}{poll_time};
+		$faction_credits *= $total_players;
 
 		if (!$faction || $faction <= 0) {
 			next Faction;
@@ -391,7 +401,8 @@ sub pay_players {
 			stdout_log("$faction does not have any payable players", 5);
 			next Faction;
 		}
-		my $player_payout = $faction_payout{$faction} / @payable_members * $config{General}{credit_multiplier} * $config{General}{poll_time};
+		
+		my $player_payout = $faction_credits / @payable_members;
 		foreach my $member (@payable_members) {
 			stdout_log("Giving '$member' $player_payout credits", 6);
 			if (!stard_give_credits($member, $player_payout)) {

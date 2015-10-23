@@ -1,8 +1,9 @@
 package ares_object;
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_faction;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 
@@ -21,7 +22,7 @@ require Exporter;
 # OUTPUT: entity name
 sub ares_object_to_entity {
 	my $object = $_[0];
-	open(my $obj_fh, "<", "$ares_core::ares_state/Objects/$object.entity");
+	open(my $obj_fh, "<", "$ares_core::ares_state_objects/$object.entity");
 	my $entity = join('', <$obj_fh>);
 	close($obj_fh);
 	return $entity;
@@ -36,8 +37,8 @@ sub ares_set_object_entity {
 	my $entity = $_[1];
 
 	stdout_log("Associating object '$object' with entity '$entity'", 5);
-	open(my $obj_fh, ">", "$ares_core::ares_state/Objects/$object.entity") or
-		stdout_log("Failed: writing to file '$ares_core::ares_state/Objects/$object.entity': $!", 3);
+	open(my $obj_fh, ">", "$ares_core::ares_state_objects/$object.entity") or
+		stdout_log("Failed: writing to file '$ares_core::ares_state_objects/$object.entity': $!", 3);
 	print $obj_fh $entity;
 	close($obj_fh);
 }
@@ -51,8 +52,8 @@ sub ares_write_object_status {
 	my $state = $_[1];
 
 	stdout_log("Setting state of '$object' to $state", 5);
-	open(my $station_fh, ">", "$ares_core::ares_state/Objects/$object") or
-		stdout_log("Failed: writing to file '$ares_core::ares_state/Objects/$object': $!", 3);
+	open(my $station_fh, ">", "$ares_core::ares_state_objects/$object") or
+		stdout_log("Failed: writing to file '$ares_core::ares_state_objects/$object': $!", 3);
 	print $station_fh $state;
 	close($station_fh);
 }
@@ -63,7 +64,7 @@ sub ares_write_object_status {
 # OUTPUT: object status (this should be a faction id for it's ownership)
 sub ares_read_object_status {
 	my $object = $_[0];
-	open(my $station_fh, "<", "$ares_core::ares_state/Objects/$object");
+	open(my $station_fh, "<", "$ares_core::ares_state_objects/$object");
 	my $state = join('',<$station_fh>);
 	close($station_fh);
 	return $state;

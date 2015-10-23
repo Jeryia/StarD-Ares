@@ -1,10 +1,11 @@
 package ares_player;
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
 use ares_faction;
 use ares_game;
 use ares_player;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 

@@ -1,7 +1,8 @@
 package ares_vote;
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 

@@ -1,7 +1,8 @@
 package ares_faction;
 use lib("./lib");
-use lib("../../lib");
 use ares_core;
+
+use lib("../../lib");
 use stard_lib;
 use stard_log;
 
@@ -11,7 +12,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_faction_valid ares_get_factions ares_get_faction_name ares_set_faction_name ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_notify_faction);
+@EXPORT = qw(ares_faction_valid ares_get_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_team_to_faction ares_set_team_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_notify_faction);
 
 
 ## ares_faction_valid 
@@ -31,15 +32,23 @@ sub ares_faction_valid {
 
 ## ares_get_factions
 # Get a list of the ares factions
-# OUTPUT: array of all the main factions
+# OUTPUT: array of the main factions
 sub ares_get_factions {
 	my @factions;
-	for (my $teamNum = 0; $teamNum < $ares_core::ares_config{General}{team_number}; $teamNum++) {
-		open(my $team_fh, "<", "$ares_core::ares_state_faction/team$teamNum");
-		my $id = join("",<$team_fh>);
-		close($team_fh);
+	for (my $teamNum = 1; $teamNum <= $ares_core::ares_config{General}{team_number}; $teamNum++) {
+		push(@factions, ares_team_to_faction($teamNum));
+	}
+	return \@factions;
+}
 
-		push(@factions, $id);
+## ares_get_all_factions
+# Get a list of the ares factions including the npc factions
+# OUTPUT: array of all the factions
+sub ares_get_all_factions {
+	my @main_factions = @{ares_get_factions()};
+	my @factions = @main_factions;
+	foreach my $faction_id (@main_factions) {
+		push(@factions,ares_get_faction_npc($faction_id));
 	}
 	return \@factions;
 }
@@ -75,16 +84,30 @@ sub ares_set_faction_name {
 	close($faction_fh);
 }
 
+## ares_set_team_faction
+# Get the faction id for a given team (map terminology)
+# INPUT1: team number
+# OUTPUT: faction id
+sub ares_set_team_faction {
+	my $teamNum = $_[0] -1;
+	my $faction_id = $_[1];
+
+
+	open(my $team_fh, ">", "$ares_core::ares_data/team$teamNum");
+	print $team_fh $faction_id;
+	close($team_fh);
+}
+
 ## ares_team_to_faction
 # Get the faction id for a given team (map terminology)
 # INPUT1: team number
 # OUTPUT: faction id
-sub ares_team_to_faction{
+sub ares_team_to_faction {
 	my $teamNum = $_[0];
 	if ($teamNum > 0) {
 		my $faction_id;
 		$teamNum -= 1;
-		open(my $team_fh, "<", "$ares_core::ares_state_faction/team$teamNum");
+		open(my $team_fh, "<", "$ares_core::ares_data/team$teamNum") or return 0;
 		$faction_id = join('', <$team_fh>);
 		close($team_fh);
 		return $faction_id;
