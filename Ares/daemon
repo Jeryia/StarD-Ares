@@ -478,7 +478,7 @@ sub completed {
 	my $state_time = $_[0];
 	if ($config{General}{autostart}) {
 		my $remaining = 60 - $state_time;
-		notify_every("Game is Complete. A new game will start in $remaining seconds.", 30);
+		notify_every("Game is Complete. A new game will start in $remaining seconds.\nYou may vote for the next map with the !ares_vote command.", 30);
 		stdout_log("Game is complete. New game will start in $remaining sec", 6);
 		if ($remaining <= 0) {
 			my $map = ares_vote_win();
