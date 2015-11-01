@@ -42,6 +42,9 @@ sub main {
 	if (!ares_get_player_faction($player)) {
 		ares_new_player($player);
 	}
+	else {
+		ares_fix_faction($player);
+	}
 
 	# Put them home. safeguard against using opposing faction base as spawn.
 	if (-e "$ares_player_state/$player.dead") {
@@ -51,4 +54,3 @@ sub main {
 
 	ares_player_unlock($lock_fh);
 }
-
