@@ -46,11 +46,12 @@ sub main {
 		ares_fix_faction($player);
 	}
 
-	# Put them home. safeguard against using opposing faction base as spawn.
 	if (-e "$ares_player_state/$player.dead") {
+		# Put them home. safeguard against using opposing faction base as spawn.
 		stard_change_sector_for($player, ares_get_faction_home(ares_get_player_faction($player)));
 		unlink("$ares_player_state/$player.dead");
 	}
 
 	ares_player_unlock($lock_fh);
 }
+

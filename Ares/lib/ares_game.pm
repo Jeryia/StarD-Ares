@@ -149,6 +149,21 @@ sub ares_clean_all {
 		};
 	};
 
+	my @players = keys %{stard_player_list()};
+
+	foreach my $player (@players) {
+		stdout_log("Cleaning $player", 6);
+		stard_give_all_items($player, -1000000);
+		stard_give_credits($player, -2000000000);
+	}
+
+	stdout_log("Deleting everything", 6);
+	if (!stard_despawn_all("", "all", "0")) {
+		stard_pm("Error Despawning Everything.");
+		print stard_last_output();
+		stdout_log("Error Despawning Sector Everything", 1);
+		exit 0;
+	};
 
 	my %map_config = %{ares_get_map_config()};
 	if (keys %map_config) {
@@ -180,13 +195,6 @@ sub ares_clean_all {
 		unlink("$ares_core::ares_state/vote");
 	}
 
-	stdout_log("Deleting everything", 6);
-	if (!stard_despawn_all("", "all", "0")) {
-		stard_pm("Error Despawning Everything.");
-		print stard_last_output();
-		stdout_log("Error Despawning Sector Everything", 1);
-		exit 0;
-	};
 
 	stdout_log("Despawning Sector '2 2 2'", 6);
 	if (!stard_despawn_sector("", "all", "0", "2 2 2")) {

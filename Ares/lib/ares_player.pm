@@ -40,6 +40,7 @@ sub ares_new_player {
 		my %faction_members;
 		foreach my $faction_id (@faction_ids) {
 			my @members = @{ares_get_faction_members($faction_id)};
+			$faction_members{$faction_id}=0;
 			foreach my $player (@members) {
 				if ($player_list{$player}) {
 					$faction_members{$faction_id}++;

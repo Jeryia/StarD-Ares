@@ -152,6 +152,7 @@ sub waiting_for_players {
 
 
 	corral_factions(\%player_list);
+	faction_players(\%player_list);
 	if (@players >= $config{General}{min_players}) {
 		stard_broadcast("Notice: Game Starting in $config{General}{player_prep_time} minutes.");
 		stard_broadcast("Please Take this time to upload any ships you need, and spawn them.");
@@ -178,6 +179,7 @@ sub waiting_start {
 		}
 	}
 	corral_factions(\%player_list);
+	faction_players(\%player_list);
 
 	if (@players < $config{General}{min_players}) {
 		stard_broadcast("Notice: Too few players are online to start a game. Waiting for players to join.");
@@ -188,6 +190,9 @@ sub waiting_start {
 		my @factions = @{ares_get_factions()};
 		foreach my $faction (@factions) {
 			my $home = ares_get_faction_home($faction);
+
+			fix_players_factions(\%player_list);
+
 			stdout_log("Removing noexit from sector '$home'.", 6);
 			if (!stard_sector_chmod($home, "remove", "noexit")) {
 				stard_broadcast("Error removing noexit on $home.\n");
@@ -239,6 +244,7 @@ sub in_progress {
 
 
 
+	faction_players(\%player_list);
 	foreach my $object (keys %ares_map_config) {
 		stdout_log("Checking $object", 6);
 		my $station_fh;
@@ -544,7 +550,44 @@ sub corral_factions {
 	};
 }
 
+## faction_players
+# make sure all players are factioned
+# INPUT1: player list hash
+sub faction_players {
+	my %player_list = %{$_[0]};
 
+	Player: foreach my $player (keys %player_list) {
+		if (stard_is_admin($player)) {
+			next Player;
+		}
+		if (!(defined $player_list{$player}{control})) {
+			next Player;
+		}
+		if (!ares_faction_valid($player_list{$player}{faction})) {
+			my $lock_fh = ares_player_lock($player);
+			ares_fix_faction($player);
+			ares_player_unlock($lock_fh);
+		}
+	}
+}
 
+## fix_players_factions
+# make sure all players are factioned correctly
+# INPUT1: player list hash
+sub fix_players_factions {
+	my %player_list = %{$_[0]};
+
+	Player: foreach my $player (keys %player_list) {
+		if (stard_is_admin($player)) {
+			next Player;
+		}
+		if (!(defined $player_list{$player}{control})) {
+			next Player;
+		}
+		my $lock_fh = ares_player_lock($player);
+		ares_fix_faction($player);
+		ares_player_unlock($lock_fh);
+	}
+}
 
 1;
