@@ -85,7 +85,7 @@ sub ares_vote_for {
 	$votes{$player} = $map;
 
 	foreach my $player (keys %votes) {
-		print $vote_fh "$player\t$votes{$player}";
+		print $vote_fh "$player\t$votes{$player}\n";
 	}
 	close($vote_fh);
 	close($vote_r_fh);
