@@ -5,7 +5,7 @@ use File::Basename;
 use lib("./lib");
 use ares_core;
 use ares_game;
-use ares_faction;
+use ares_player;
 
 use lib("../../lib");
 use stard_lib;
@@ -33,12 +33,9 @@ sub main {
 	}
 
 	my $faction = ares_get_player_faction($player);	
-	my @output = split("\n", ares_game_status_string($faction, $type));
 	
 	stard_broadcast("Current game status has been sent to you, $player.");
-	foreach my $line (@output) {
-		stard_pm($player, $line);
-	};
+	stard_pm($player, ares_game_status_string($faction, $type));
 };
 
 sub usage {

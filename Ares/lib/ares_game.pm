@@ -1,7 +1,7 @@
 package ares_game;
 use lib("./lib");
 use ares_core;
-use ares_faction;
+use ares_player;
 use ares_map;
 use ares_object;
 
@@ -111,6 +111,7 @@ sub ares_game_status_string {
 				$output .= sprintf("%-25s     %-10s\n", "$object($map_config{$object}{sector})", ares_object_status_to_string($o_status, $faction));
 			}
 		}
+		$output .= "-\n";
 	}
 
 	if (!$type || $type eq 'control') {
@@ -124,6 +125,7 @@ sub ares_game_status_string {
 				$output .= sprintf("%-25s     %-10s\n", "$object($map_config{$object}{sector})", ares_object_status_to_string($o_status, $faction));
 			}
 		}
+		$output .= "-\n";
 	}
 	return $output;
 };

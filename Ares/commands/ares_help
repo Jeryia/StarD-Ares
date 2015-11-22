@@ -3,6 +3,7 @@
 use lib("../../lib");
 use stard_lib;
 use stard_log;
+
 use lib("./lib");
 use ares_core;
 use ares_game;
@@ -26,49 +27,54 @@ exit 0;
 sub main {
 	my $player = $_[0];
 	my $topic = $_[1];
-	my $game_state = ares_get_game_state();
+
+	my $message;
 	
 	if (!$topic) {
 		usage($player);
 	}
 	elsif ($topic eq 'control') {
-		stard_pm($player, "control points");
-		stard_pm($player, "Desc: control points are points you can capture to gain rescources.");
-		stard_pm($player, "Capturing: destroy all enemies in the sector of the control point. Then stay in that sector until you get a message that you captured the control point. You can see who owns the control points with the !status command");
-		stard_pm($player, "Locations: use !status control to see the locations of all control points");
+		$message  = "control points\n";
+		$message .= "Desc: control points are points you can capture to gain rescources.\n";
+		$message .= "Capturing: destroy all enemies in the sector of the control point. Then stay in that sector until you get a message that you captured the control point. You can see who owns the control points with the !status command\n";
+		$message .= "Locations: use !status control to see the locations of all control points\n";
 	}
 	elsif ($topic eq "base") {
-		stard_pm($player, "bases");
-		stard_pm($player, "Desc: Bases are the primary objectives of the game. Each faction will start with at least one base. you win by destroying all of your enemy's bases.");
-		stard_pm($player, "Locations: use !status base to see the locations of all bases");
+		$message = "bases\n";
+		$message .= "Desc: Bases are the primary objectives of the game. Each faction will start with at least one base. you win by destroying all of your enemy's bases.\n";
+		$message .= "Locations: use !status base to see the locations of all base\n";
 	}
 	elsif ($topic eq "money") {
-		stard_pm($player, "money");
-		stard_pm($player, "Credits are distributed to all players every few seconds. The amount of credits given is based on the number of bases and control points you have. The more bases and control points in your control, the more you get");
+		$message = "money\n";
+		$message .= "Credits are distributed to all players every few seconds. The amount of credits given is based on the number of bases and control points you have. The more bases and control points in your control, the more you get\n";
 	}
 	elsif ($topic eq "building") {
-		stard_pm($player, "building");
-		stard_pm($player, "Building is permitted during a game in ares. However, it will cost you a considerable amount of time. That could cost your team control points.");
-		stard_pm($player, "It is reccommended that you instread build outside the game, and upload the blueprints.");
+		$message = "building\n";
+		$message .= "Building is permitted during a game in ares. However, it will cost you a considerable amount of time. That could cost your team control points\n";
+		$message .= "It is reccommended that you instread build outside the game, and upload the blueprints.\n";
 	}
 	elsif ($topic eq "voting") {
-		stard_pm($player, "voting");
-		stard_pm($player, "You are permitted to vote on the map to play on next game");
-		stard_pm($player, "Type !ares_maps to see a list of available maps, and !ares_vote <map> to vote for the next map to play");
+		$message = "voting\n";
+		$message .= "You are permitted to vote on the map to play on next game\n";
+		$message .= "Type !ares_maps to see a list of available maps, and !ares_vote <map> to vote for the next map to play";
 	}
 	else {
+		stard_pm($player, "Unknown Topic: $topic");
 		usage($player);
 	}
+	stard_pm($player, $message);
 };	
 		
 sub usage {
 	my $player = $_[0];
-	stard_pm($player, "Usage: !ares_help <topic>");
-	stard_pm($player, "Available Topics:");
-	stard_pm($player, "control - about control points");
-	stard_pm($player, "base - about bases");
-	stard_pm($player, "money - how you get credits");
-	stard_pm($player, "building - about building ships");
-	stard_pm($player, "voting - how to vote for the next map");
+	my $message;
+	$message  = "Usage: !ares_help <topic>\n";
+	$message .= "Available Topics:\n";
+	$message .= "control - about control points\n";
+	$message .= "base - about bases\n";
+	$message .= "money - how you get credits\n";
+	$message .="building - about building ships\n";
+	$message .="voting - how to vote for the next map\n";
+	stard_pm($player, $message);
 	exit 0;
 }

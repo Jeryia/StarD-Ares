@@ -5,7 +5,6 @@ use warnings;
 use lib("./lib");
 use ares_core;
 use ares_game;
-use ares_faction;
 use ares_player;
 
 use lib("../../lib");
@@ -29,16 +28,28 @@ sub main {
 	if (!$lock_fh) {
 		exit 0;
 	}
-
 	my $game_state = ares_get_game_state();
 
 	if ($game_state eq 'in_progress') {
-		stard_pm($player, "Faction changing is not permitted at this time");
+		my %faction_sizes = %{ares_get_faction_sizes()};
+		
+		foreach my $faction2 (keys %faction_sizes) {
+			print "$faction_sizes{$faction_id} +1 > $faction_sizes{$faction2}\n";
+			if (
+				defined $faction_sizes{$faction_id} && 
+				defined $faction_sizes{$faction2} && 
+				$faction_sizes{$faction_id} > $faction_sizes{$faction2}
+			) {
+				exit 0;
+			}
+		}
+
+		my $message;
+		$message  = "Faction changing is not permitted at this time!\n";
+		$message .= "You can only switch factions if the team you are joining has less players.";
+		stard_pm($player, $message);
 		ares_fix_faction($player);
-		ares_player_unlock($player);
-		exit 1;
 	}
 
-	sleep 1;
 	ares_player_unlock($lock_fh);
 }

@@ -5,7 +5,6 @@ use warnings;
 use lib("./lib");
 use ares_core;
 use ares_player;
-use ares_faction;
 use ares_game;
 
 use lib("../../lib");
@@ -27,16 +26,25 @@ sub main {
 
 	my $game_state = ares_get_game_state();
 
-	if (!(
-		$game_state eq 'waiting_for_players' ||
-		$game_state eq 'waiting_start'
-	)) {
-		exit 0;
-	}
 	my $lock_fh = ares_player_lock($player);
 	if (!$lock_fh) {
 		exit 0;
 	}
+
+	if ($game_state eq 'in_progress') {
+		my %faction_sizes = %{ares_get_faction_sizes()};
+		
+		foreach my $faction2 (keys %faction_sizes) {
+			if (
+				defined $faction_sizes{$faction_id} &&
+				defined $faction_sizes{$faction2} &&
+				$faction_sizes{$faction_id} > $faction_sizes{$faction2}
+			) {
+				exit 0;
+			}
+		}
+	}
+
 	if (!$faction_id) {
 		exit 0;
 	}
@@ -56,7 +64,6 @@ sub main {
 		stard_pm($player, "The faction you tried to join is an NPC faction. This is not permitted");
 		ares_fix_faction($player);
 	}
-	sleep 1;
 	ares_player_unlock($lock_fh);
 }
 

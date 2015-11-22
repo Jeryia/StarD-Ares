@@ -8,7 +8,6 @@ use ares_map;
 use ares_game;
 use ares_object;
 use ares_player;
-use ares_faction;
 
 use lib("../../lib");
 use stard_lib;
@@ -62,7 +61,12 @@ sub main {
 
 	ares_setup_game_env();
 	# prep new map config
-	ares_set_cur_map($map);
+	if(!ares_set_cur_map($map)) {
+		stard_broadcast("Error Loading map: $map");
+		stard_broadcast("Check logs for more details: $map");
+		exit 1;
+	}
+
 	my %ares_map_config = %{ares_get_raw_map_config("$ares_maps/$map.map")};
 
 	if (! keys %ares_map_config) {
@@ -95,7 +99,7 @@ sub ares_setup_factions {
 		}
 	}
 	else {
-		@team_names = ("Alpha Squadren", "Beta Squadren", "Gamma Squadren", "Delta Squaldren");
+		@team_names = ("Alpha Squadron", "Beta Squadron", "Gamma Squadron", "Delta Squaldron");
 	};
 
 	my %faction_list = %{stard_faction_list_bid()};
@@ -278,14 +282,14 @@ sub ares_setup_map {
 
 		if ($ares_map_config{$object}{doodads}) {
 			my @doodads = split(",", $ares_map_config{$object}{doodads});
-			my @pos = (); 
+			my @pos = ();
 			my $doodad_faction = -3;
 
 			if ($ares_map_config{$object}{doodad_pos}) {
 				@pos = split(",", $ares_map_config{$object}{doodad_pos});
 			};
 			ares_spawn_mobs(\@doodads, \@pos, $doodad_faction, $sector, 0);
-		}
+		};
 	};
 };
 

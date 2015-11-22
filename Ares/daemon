@@ -6,7 +6,7 @@ use lib("./lib");
 use ares_core;
 use ares_game;
 use ares_object;
-use ares_faction;
+use ares_player;
 use ares_player;
 use ares_vote;
 use ares_map;
@@ -245,6 +245,7 @@ sub in_progress {
 
 
 	faction_players(\%player_list);
+	balance_factions(\%player_list);
 	foreach my $object (keys %ares_map_config) {
 		stdout_log("Checking $object", 6);
 		my $station_fh;
@@ -563,7 +564,12 @@ sub faction_players {
 		if (!(defined $player_list{$player}{control})) {
 			next Player;
 		}
-		if (!ares_faction_valid($player_list{$player}{faction})) {
+		my $ares_faction = ares_get_player_faction($player);
+
+		if (
+			!ares_faction_valid($player_list{$player}{faction}) ||
+			$ares_faction != $player_list{$player}{faction}
+		) {
 			my $lock_fh = ares_player_lock($player);
 			ares_fix_faction($player);
 			ares_player_unlock($lock_fh);
@@ -589,5 +595,75 @@ sub fix_players_factions {
 		ares_player_unlock($lock_fh);
 	}
 }
+
+## balance_factions
+# Ensure factions on the server are correctly balanced. Takes actions if one 
+# faction is 2 players larger than annother.
+# INPUT1: player info hash
+sub balance_factions {
+	my %player_list = %{$_[0]};
+
+	my %faction_sizes = %{ares_get_faction_sizes()};
+	my $oversized_faction = 0;
+	my $type = 'faction_balance';
+	my $grace_time = 20;
+	my $pick_time  = 60;
+
+	stdout_log("Balancing Factions...", 6);
+	Faction: foreach my $faction (keys %faction_sizes) {
+		foreach my $faction2 (keys %faction_sizes) {
+			print "$faction($faction_sizes{$faction}) vs $faction2($faction_sizes{$faction2})\n";
+			if (
+				defined $faction_sizes{$faction} && 
+				defined $faction_sizes{$faction2} && 
+				$faction_sizes{$faction} > $faction_sizes{$faction2} + 1
+			) {
+				$oversized_faction = $faction;
+				last Faction;
+			}
+		}
+	}
+	if (!$oversized_faction) {
+		$last_notification{$type} = 0;
+		return;
+	}
+
+	stdout_log("$oversized_faction has too many players. Activating auto-balancer...", 5);
+	$last_notification{$type} += $config{General}{poll_time};
+	if ($last_notification{$type} >= $grace_time) {
+		stdout_log("Making call for players to switch factions", 5);
+		my $name = ares_get_faction_name($oversized_faction);
+		my $message = "$name has too many players. A volenteer is needed to switch factions.\n";
+		$message .= "You can switch factions using the faction gui.\n";
+		$message .= ($pick_time + $grace_time - $last_notification{$type}) . " seconds until someone will be chosen at random.";
+		notify_every($message, 30, 'balance_alert');
+	}
+	if ($last_notification{$type} >= $pick_time + $grace_time) {
+		stdout_log("Picking a 'victim' to go to the other team", 5);
+		my @members =();
+		foreach my $player (keys %player_list) {
+			if ($player_list{$player}{faction} == $oversized_faction) {
+				push(@members, $player);
+			}
+		}
+		my $picked_player = $members[int(rand($#members))];
+		my $lock_fh = ares_player_lock($picked_player);
+		Faction: foreach my $faction_id1 (keys %faction_sizes) {
+			foreach my $faction_id2 (keys %faction_sizes) {
+				if (
+					$faction_sizes{$faction_id1} >= $faction_sizes{$faction_id2} &&
+					$faction_id1 != $faction_id2
+				) {
+					next Faction;
+				}
+				stdout_log("$picked_player has been moved to the other team!", 5);
+				stard_faction_add_member($picked_player, $faction_id1);
+				last Faction;
+			}
+		}
+		ares_player_unlock($lock_fh);
+	}
+}
+
 
 1;

@@ -1,7 +1,7 @@
 package ares_object;
 use lib("./lib");
 use ares_core;
-use ares_faction;
+use ares_player;
 
 use lib("../../lib");
 use stard_lib;

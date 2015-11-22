@@ -1,1 +1,3 @@
-entityDestroyed
+#!perl
+system("perl", "./serverEvents/entityDestroyed", @ARGV);
+
