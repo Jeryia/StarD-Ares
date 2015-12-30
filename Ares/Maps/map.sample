@@ -36,3 +36,7 @@ defenders = blueprint 1,blueprint 2
 # positions of the defender ships when they spawn. (comma seperated list, the 
 # first one corresponds with the first blueprint, and so on)
 defender_pos = 100 100 0,-200 -10 -20
+# true if base is home for the given faction
+home = 1
+# if this is a home base, this is used to determine where players spawn at it
+spawn = 16.0 -4.1 18.0

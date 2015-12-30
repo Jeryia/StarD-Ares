@@ -8,6 +8,7 @@ owner = 1
 objective = 1
 can_capture = 0
 home = 1
+spawn = 16.0 -4.1 18.0
 
 [Beta_base]
 sector ='-6 0 4'
@@ -18,6 +19,7 @@ owner = 2
 objective = 1
 can_capture = 0
 home = 1
+spawn = 16.0 -4.1 18.0
 
 [Alpha_shop]
 sector = '7 0 4'
