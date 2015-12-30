@@ -246,7 +246,7 @@ sub in_progress {
 	if (!(keys %player_list) && defined $last_notification{no_players}) {
 		$last_notification{no_players}-= $config{General}{poll_time};
 		if ($last_notification{no_players} <= 0) {
-			return "completed";
+			return "complete";
 		}
 	}
 	else {
