@@ -23,7 +23,6 @@ my $ares_state = "$ares_home/State";
 my $ares_maps = "$ares_home/Maps";
 
 
-require "$stard_home/lib/stard_lib.pm";
 ares_setup_run_env($ares_home);
 $stard_home = "./../..";
 
@@ -243,8 +242,19 @@ sub in_progress {
 	my %faction_payout;
 	my $payable_players;
 
+	# if no one is online for 10 min, we reset.
+	if (!(keys %player_list) && defined $last_notification{no_players}) {
+		$last_notification{no_players}-= $config{General}{poll_time};
+		if ($last_notification{no_players} <= 0) {
+			return "completed";
+		}
+	}
+	else {
+		# set countdown for 10 minutes and keep it there until no one is online
+		$last_notification{no_players} = 10*60;
+	}
 
-
+	# General game maintinance
 	faction_players(\%player_list);
 	balance_factions(\%player_list);
 	foreach my $object (keys %ares_map_config) {
@@ -267,7 +277,7 @@ sub in_progress {
 			manage_control_points($object, $ares_map_config{$object}, \%player_list);
 		}
 	};
-
+	
 	pay_players(\%player_list, \%ares_map_config);
 };
 
@@ -363,7 +373,7 @@ sub manage_control_points {
 		$sector_state{$name}{elapsed} = 0;
 	}
 }
-	
+
 ## pay_players
 # Gives all players the credits they deserve
 # INPUT1: player_list hash
