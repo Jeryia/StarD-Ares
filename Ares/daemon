@@ -221,6 +221,7 @@ sub waiting_start {
 	my $remaining = ($config{General}{player_prep_time} * 60) - $state_time;
 	my $r_minutes = int($remaining/60);
 	my $r_seconds = $remaining - ($r_minutes * 60);
+	stard_cmd("/start_countdown $remaining Game Starting in...");
 	stdout_log("Remaining to start: $r_minutes min, and $r_seconds sec", 6);
 	notify_every("Game Starts in $r_minutes minutes and $r_seconds seconds", 30);
 	return;
