@@ -38,8 +38,12 @@ sub main {
 			if (
 				defined $faction_sizes{$faction_id} &&
 				defined $faction_sizes{$faction2} &&
-				$faction_sizes{$faction_id} > $faction_sizes{$faction2}
+				$faction_id != $faction2 &&
+				$faction_sizes{$faction_id} >= $faction_sizes{$faction2}
 			) {
+				my $message = "You can only switch factions if the team you are joining has less players.";
+				stard_pm($player, $message);
+				ares_fix_faction($player);
 				exit 0;
 			}
 		}

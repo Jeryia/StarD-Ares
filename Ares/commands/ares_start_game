@@ -201,7 +201,10 @@ sub ares_setup_map {
 	stdout_log("Setting up objects on the map", 5);
 	mkdir "$ares_state/Objects";
 	my %ares_map_config = %{$_[0]};
-	foreach my $object (keys %ares_map_config) {
+	Object: foreach my $object (keys %ares_map_config) {
+		if ($object eq "General") {
+			next Object;
+		}
 		stdout_log("Creating: $object", 6);
 		$ares_map_config{$object}{sector} = stard_location_add($ares_map_config{$object}{sector}, $config{General}{map_center});
 		my $sector = $ares_map_config{$object}{sector};
@@ -220,6 +223,16 @@ sub ares_setup_map {
 			print stard_last_output();
 			stdout_log("Error Despawning Sector $sector... Aborting game start", 1);
 			exit 1;
+		}
+	
+		if ($ares_map_config{General}{starting_credits}) {
+			ares_set_starting_credits($ares_map_config{General}{starting_credits});
+		}
+		elsif($ares_core::ares_config{General}{starting_credits}) {
+			ares_set_starting_credits($ares_core::ares_config{General}{starting_credits});
+		}
+		else {
+			ares_set_starting_credits('5000000');
 		}
 
 		stdout_log("Deleting all entities that start with '$object' just to be sure of no naming collisions", 6);
@@ -256,7 +269,12 @@ sub ares_setup_map {
 					exit 1;
 				}
 			}
-				
+			if ($ares_map_config{$object}{spawn}) {
+				ares_set_faction_spawn_pos($owner, $ares_map_config{$object}{spawn});
+			}
+			else {
+				ares_set_faction_spawn_pos($owner, '0 0 0');
+			}
 		};
 
 		if ($owner != -2 && $ares_map_config{$object}{defenders}) {

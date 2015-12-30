@@ -140,14 +140,17 @@ sub ares_clean_all {
 
 	foreach my $faction_id (@factions) {
 		if ($faction_id > 0) {
-			my @members = @{ares_get_faction_members($faction_id)};
-			foreach my $member (@members) {
-				ares_unfaction_player($member);
-			}
+			#my @members = @{ares_get_faction_members($faction_id)};
+			#foreach my $member (@members) {
+			#	ares_unfaction_player($member);
+			#}
 			stdout_log("Clearing faction '$faction_id'", 6);
 			unlink("$ares_core::ares_state_faction/$faction_id/State");
 			unlink("$ares_core::ares_state_faction/$faction_id/Players");
 			unlink("$ares_core::ares_state_faction/$faction_id/Home");
+			unlink("$ares_core::ares_state_faction/$faction_id/Spawn");
+			stard_faction_delete($faction_id);
+			stard_cmd("/faction_create_as $faction_id", ares_get_faction_name($faction_id), '');
 		};
 	};
 
@@ -157,6 +160,8 @@ sub ares_clean_all {
 		stdout_log("Cleaning $player", 6);
 		stard_give_all_items($player, -1000000);
 		stard_give_credits($player, -2000000000);
+		stard_change_sector_for($player, '2 2 2');
+		stard_teleport_to($player, '0 0 0');
 	}
 
 	stdout_log("Deleting everything", 6);

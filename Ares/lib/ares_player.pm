@@ -1,7 +1,8 @@
 package ares_player;
+use strict;
+use warnings;
 use lib("./lib");
 use ares_core;
-use ares_game;
 use ares_player;
 
 use lib("../../lib");
@@ -13,7 +14,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock);
+@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock ares_faction_valid ares_get_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_set_team_faction ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_get_faction_sizes ares_notify_faction ares_get_faction_spawn_pos ares_set_faction_spawn_pos ares_get_starting_credits ares_set_starting_credits);
 
 
 
@@ -28,7 +29,7 @@ sub ares_new_player {
 	if (stard_is_admin($player)) {
 		return;
 	};
-	my $game_state = ares_get_game_state();
+	my $game_state = ares_game::ares_get_game_state();
 	if ($game_state eq "completed" || $game_state eq "" ) {
 		return;
 	};
@@ -47,7 +48,8 @@ sub ares_new_player {
 			ares_new_player_setup($player, $faction_id1);
 			return;
 		}
-		my $rand_faction = int(rand(keys %faction_sizes));
+		my @faction_ids = keys %faction_sizes;
+		my $rand_faction = rand(@faction_ids) % @faction_ids;
 		ares_new_player_setup($player, $faction_ids[$rand_faction]);
 	}
 	else {
@@ -80,8 +82,10 @@ sub ares_new_player_setup {
 			ares_add_faction_member($player, $faction_id);
 			my $home = ares_get_faction_home($faction_id);
 			stard_change_sector_for($player, $home);
+			stard_teleport_to($player, ares_get_faction_spawn_pos($faction_id));
 			stard_set_spawn_player($player);
 	
+			print "faction_id = $faction_id\n";
 			my $faction_name = ares_get_faction_name($faction_id);
 			stard_broadcast("$player has been assigned to $faction_name!");
 			return 1;
@@ -91,14 +95,14 @@ sub ares_new_player_setup {
 		}
 	}
 	
-	if(!ares_set_player_credits($player, $ares_core::ares_config{General}{starting_credits})) {
+	if(!ares_set_player_credits($player, ares_get_starting_credits())) {
 		my %player_info = stard_player_info($player);
 		# if player is not online anymore stop trying, we'll get them next time
 		if (!(keys %player_info)) {
 			return 0;
 		}
 		sleep 1;
-		if (!ares_set_player_credits($player, $ares_core::ares_config{General}{starting_credits})) {
+		if (!ares_set_player_credits($player, ares_get_starting_credits())) {
 			stard_broadcast("Error setting up environment for $player.");
 			stard_broadcast("Reccommend $player try relogging.");
 		};
@@ -111,8 +115,10 @@ sub ares_new_player_setup {
 	ares_add_faction_member($player, $faction_id);
 	my $home = ares_get_faction_home($faction_id);
 	stard_change_sector_for($player, $home);
+	stard_teleport_to($player, ares_get_faction_spawn_pos($faction_id));
 	stard_set_spawn_player($player);
 
+	print "faction_id = $faction_id\n";
 	my $faction_name = ares_get_faction_name($faction_id);
 	stard_broadcast("$player has been assigned to $faction_name!");
 }
@@ -153,7 +159,7 @@ sub ares_add_account {
 	if ( -w "$ares_core::ares_state/Accounts") {
 		$account ="\n$account";
 	}
-	open(my $account_fh, ">>", "$ares_core::ares_state/Accounts") or stard_broadcast("can't open file '$ares_state/Accounts': $!");
+	open(my $account_fh, ">>", "$ares_core::ares_state/Accounts") or stard_broadcast("can't open file '$ares_core::ares_state/Accounts': $!");
 	flock($account_fh, 2);
 	print $account_fh $account;
 	close($account_fh);
@@ -368,6 +374,34 @@ sub ares_set_faction_home {
 	close($home_fh);
 }
 
+## ares_get_faction_spawn_pos
+# Get the faction spawning position
+# INPUT1: faction id
+# OUTPUT: position to spawn players (space delimited string)
+sub ares_get_faction_spawn_pos {
+	my $faction_id = $_[0];
+
+	open(my $home_fh, "<", "$ares_core::ares_state_faction/$faction_id/Spawn") or return;
+	my $home = join("", <$home_fh>);
+	close($home_fh);
+	return $home;
+}
+
+## ares_set_faction_spawn_pos
+# set the faction spawning position
+# INPUT1: faction id
+# INPUT2: postition to have players spawn
+sub ares_set_faction_spawn_pos {
+	my $faction_id = $_[0];
+	my $home = $_[1];
+
+	stdout_log("Setting sector '$home' as faction $faction_id\'s home", 6);
+	mkdir("$ares_core::ares_state_faction/$faction_id");
+	open(my $home_fh, ">", "$ares_core::ares_state_faction/$faction_id/Spawn") or return;
+	print $home_fh $home;
+	close($home_fh);
+}
+
 ## ares_set_faction_npc
 # Each main faction gets an npc faction to have 
 # as support that cannot be controlle directly. 
@@ -555,7 +589,26 @@ sub ares_notify_faction {
 		stard_pm($player, $message);
 	}
 }
+## ares_get_starting_credits
+# Get the credits players are to start with.
+# OUTPUT: credits players are to start with
+sub ares_get_starting_credits {
+	open(my $credits_fh, "<", "$ares_core::ares_state/starting_credits") or return;
+	my $credits = <$credits_fh>;
+	close($credits_fh);
+	return $credits;
+}
 
+## ares_set_starting_credits
+# Set the credits players are to start with.
+# INPUT: credits players are to start with
+sub ares_set_starting_credits {
+	my $credits = $_[0];
+
+	open(my $credits_fh, ">", "$ares_core::ares_state/starting_credits") or return;
+	print $credits_fh $credits;
+	close($credits_fh);
+}
 
 1;
 

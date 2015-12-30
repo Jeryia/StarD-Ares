@@ -87,7 +87,10 @@ sub ares_ck_map_config {
 	my %home = ();
 		
 
-	foreach my $object (keys %map_config) {
+	Object: foreach my $object (keys %map_config) {
+		if ($object eq "General") {
+			next Object;
+		}
 		if (!($map_config{$object}{sector})) {
 			stard_broadcast("Requested Map missing sector for '$object'");
 			stdout_log("Error loading map: Requested Map missing sector for '$object'", 3);

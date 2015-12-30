@@ -7,7 +7,6 @@ use ares_core;
 use ares_game;
 use ares_object;
 use ares_player;
-use ares_player;
 use ares_vote;
 use ares_map;
 
@@ -220,7 +219,7 @@ sub waiting_start {
 	my $remaining = ($config{General}{player_prep_time} * 60) - $state_time;
 	my $r_minutes = int($remaining/60);
 	my $r_seconds = $remaining - ($r_minutes * 60);
-	stard_cmd("/start_countdown $remaining Game Starting in...");
+	stard_cmd("/start_countdown $remaining", "Game starting in:");
 	stdout_log("Remaining to start: $r_minutes min, and $r_seconds sec", 6);
 	notify_every("Game Starts in $r_minutes minutes and $r_seconds seconds", 30);
 	return;
@@ -257,7 +256,10 @@ sub in_progress {
 	# General game maintinance
 	faction_players(\%player_list);
 	balance_factions(\%player_list);
-	foreach my $object (keys %ares_map_config) {
+	Object: foreach my $object (keys %ares_map_config) {
+		if ($object eq "General") {
+			next Object;
+		}
 		stdout_log("Checking $object", 6);
 		my $station_fh;
 		if (open($station_fh, "<", "$ares_state/Objects/$object")) {
@@ -649,6 +651,7 @@ sub balance_factions {
 		$message .= ($pick_time + $grace_time - $last_notification{$type}) . " seconds until someone will be chosen at random.";
 		notify_every($message, 30, 'balance_alert');
 	}
+
 	if ($last_notification{$type} >= $pick_time + $grace_time) {
 		stdout_log("Picking a 'victim' to go to the other team", 5);
 		my @members =();
@@ -668,7 +671,7 @@ sub balance_factions {
 					next Faction;
 				}
 				stdout_log("$picked_player has been moved to the other team!", 5);
-				stard_faction_add_member($picked_player, $faction_id1);
+				stard_faction_add_member($picked_player, $faction_id2);
 				last Faction;
 			}
 		}
