@@ -1,5 +1,8 @@
 package ares_core;
 
+use strict;
+use warnings;
+
 use lib("../../lib");
 use stard_lib;
 use stard_log;

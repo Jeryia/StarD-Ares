@@ -219,7 +219,7 @@ sub waiting_start {
 	my $remaining = ($config{General}{player_prep_time} * 60) - $state_time;
 	my $r_minutes = int($remaining/60);
 	my $r_seconds = $remaining - ($r_minutes * 60);
-	stard_cmd("/start_countdown $remaining", "Game starting in:");
+	stard_countdown($remaining, "Game starting in:");
 	stdout_log("Remaining to start: $r_minutes min, and $r_seconds sec", 6);
 	notify_every("Game Starts in $r_minutes minutes and $r_seconds seconds", 30);
 	return;
@@ -625,7 +625,6 @@ sub balance_factions {
 	stdout_log("Balancing Factions...", 6);
 	Faction: foreach my $faction (keys %faction_sizes) {
 		foreach my $faction2 (keys %faction_sizes) {
-			print "$faction($faction_sizes{$faction}) vs $faction2($faction_sizes{$faction2})\n";
 			if (
 				defined $faction_sizes{$faction} && 
 				defined $faction_sizes{$faction2} && 

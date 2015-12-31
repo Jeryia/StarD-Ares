@@ -3,7 +3,6 @@ use strict;
 use warnings;
 use lib("./lib");
 use ares_core;
-use ares_player;
 
 use lib("../../lib");
 use stard_lib;
@@ -589,6 +588,7 @@ sub ares_notify_faction {
 		stard_pm($player, $message);
 	}
 }
+
 ## ares_get_starting_credits
 # Get the credits players are to start with.
 # OUTPUT: credits players are to start with

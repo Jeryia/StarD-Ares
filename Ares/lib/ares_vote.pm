@@ -1,4 +1,7 @@
 package ares_vote;
+use strict;
+use warnings;
+
 use lib("./lib");
 use ares_core;
 
@@ -77,11 +80,11 @@ sub ares_vote_for {
 	my %votes;
 
 	system("touch '$ares_core::ares_state/vote'");
-	open(my $vote_r_fh, "<", "$ares_core::ares_state/vote") or die "Failed to open '$ares_state/vote': $!\n";
+	open(my $vote_r_fh, "<", "$ares_core::ares_state/vote") or die "Failed to open '$ares_core::ares_state/vote': $!\n";
 	flock($vote_r_fh, 2);
 	%votes = %{ares_votes()};
 	
-	open(my $vote_fh, ">", "$ares_core::ares_state/vote") or die "Failed to open '$ares_state/vote': $!\n";
+	open(my $vote_fh, ">", "$ares_core::ares_state/vote") or die "Failed to open '$ares_core::ares_state/vote': $!\n";
 	$votes{$player} = $map;
 
 	foreach my $player (keys %votes) {

@@ -1,4 +1,8 @@
 package ares_map;
+
+use strict;
+use warnings;
+
 use File::Copy;
 
 use lib("./lib");
@@ -18,6 +22,7 @@ require Exporter;
 @EXPORT = qw(ares_get_map_config ares_get_raw_map_config ares_ck_map_config ares_get_cur_map ares_set_cur_map ares_get_map_list);
 
 
+my %blank_hash = ();
 
 ## ares_get_map_config
 # Get the current ares map config, and set it's relavant variables to the actual in game ones

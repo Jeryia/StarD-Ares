@@ -1,4 +1,8 @@
 package ares_game;
+
+use strict;
+use warnings;
+
 use lib("./lib");
 use ares_core;
 use ares_player;
@@ -150,7 +154,7 @@ sub ares_clean_all {
 			unlink("$ares_core::ares_state_faction/$faction_id/Home");
 			unlink("$ares_core::ares_state_faction/$faction_id/Spawn");
 			stard_faction_delete($faction_id);
-			stard_cmd("/faction_create_as $faction_id", ares_get_faction_name($faction_id), '');
+			stard_faction_create(ares_get_faction_name($faction_id), '', $faction_id);
 		};
 	};
 

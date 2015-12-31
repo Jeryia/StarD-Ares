@@ -1,4 +1,8 @@
 package ares_object;
+
+use strict;
+use warnings;
+
 use lib("./lib");
 use ares_core;
 use ares_player;
@@ -116,7 +120,11 @@ sub ares_place_object {
 	my $entity = "$name\_" . time();
 	
 	my %sector_info = %{stard_sector_info($sector)};
-	my %entities = %{$sector_info{entity}};
+	my %entities = ();
+
+	if ($sector_info{entity}) {
+		%entities = %{$sector_info{entity}};
+	}
 
 	# Remove Stations in the sector
 	stard_cmd("/load_sector_range $sector $sector");
