@@ -1,0 +1,79 @@
+[Alpha_Base]
+sector = '6 0 4'
+blueprint = 'Ares Massive Base'
+type = 'station'
+value = 1
+owner = 1
+objective = 1
+can_capture = 0
+home = 1
+spawn = 0.1 -2.5 28.0
+
+[Beta_Base]
+sector ='-6 0 4'
+blueprint = 'Ares Massive Base'
+type = 'station'
+value = 1
+owner = 2
+objective = 1
+can_capture = 0
+home = 1
+spawn = 0.1 -2.5 28.0
+
+[Alpha_Shop]
+sector = '7 0 4'
+blueprint = 'Ares Shop'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 0
+
+[Beta_Shop]
+sector = -7 0 4
+blueprint = 'Ares Shop'
+type = station
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 0
+
+[Mining_Outpost_Alpha]
+sector = -5 0 3
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner = -2
+objective = 0
+can_capture = 1
+pirates = Pirate Fighter Type1,Pirate Fighter Type1
+pirate_pos = 100 10 23,-200 -100 -20
+defenders = Pirate Fighter Type1,Pirate Fighter Type1
+defender_pos = 100 10 23,-200 -100 -20
+
+[Mining_Outpose_Beta]
+sector = '5 0 5'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 0.5
+owner   = -2
+objective = 0
+can_capture = 1
+pirates = Pirate Fighter Type1,Pirate Fighter Type1
+pirate_pos = 100 10 23,-200 -100 -20
+defenders = Pirate Fighter Type1,Pirate Fighter Type1
+defender_pos = 100 10 23,-200 -100 -20
+
+[Mining_Outpost_Mid]
+sector = '0 0 4'
+blueprint = 'Ares Recycling Station'
+type = 'station'
+value = 0.5
+owner   = -2
+objective = 0
+can_capture = 1
+pirates = Pirate Fighter Type1,Pirate Fighter Type1,Pirate Fighter Type1,Pirate Raider,Pirate Raider
+pirate_pos = -210 -5 -50,-200 -10 -50,-50 20 50,20 40 -1, 240 130 76
+defenders = Pirate Fighter Type1,Pirate Fighter Type1
+defender_pos = -210 -5 -50,-200 -10 -50
+
