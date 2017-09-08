@@ -42,7 +42,6 @@ my $dbh;
 if ($config{General}{use_mysql}) {
 	require DBI;
 	$dbh = DBI->connect("DBI:mysql:database=$config{database};host=$config{db_host}",
-E
 		$config{db_user}, $config{db_passwd},
 		{'RaiseError' => 1}
 	);
