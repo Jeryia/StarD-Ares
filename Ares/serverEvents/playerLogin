@@ -1,0 +1,95 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("./lib");
+use ares_core;
+use ares_player;
+use ares_game;
+
+use lib("../../lib/perl");
+use Starmade::Player;
+use Stard::Base;
+
+$|=1;
+
+ares_setup_run_env('.');
+starmade_setup_lib_env("./../../");
+
+my $ares_player_state = "./State/Players";
+my %config = %{stard_read_config("$ares_home/ares.cfg")};
+
+main(@ARGV);
+exit 0;
+##############################################
+
+if ($config{General}{use_mysql}) {
+	require DBI;
+}
+else {
+	exit 0;
+}
+
+
+sub main {
+	my $player = $_[0];
+
+	my %db_player_list = ();
+	my %db_player_list_bname = ();
+	my %player_list = %{starmade_player_list()};
+	
+
+	my $dbh = DBI->connect("DBI:mysql:database=$config{General}{database};host=$config{General}{db_host}",
+		$config{General}{db_user}, $config{General}{db_passwd},
+		{'RaiseError' => 1}
+	);
+
+	my $sth = $dbh->prepare("SELECT ip,in_game FROM players");
+	$sth->execute();
+
+	while (my $ref = $sth->fetchrow_hashref()) {
+		$db_player_list{$ref->{ip}} = $ref->{in_game};
+		$db_player_list_bname{$ref->{in_game}} = $ref->{ip};
+	}
+
+	Name: foreach my $name (keys %player_list) {
+		my $ip = $player_list{$name}{ip};
+		if (starmade_is_admin($name)) {
+			next Name;
+		}
+		if ($db_player_list{$ip}) {
+			if (!$db_player_list{$ip} eq '') {
+				my $sth = $dbh->prepare("UPDATE players SET in_game = ?, date = NOW() WHERE ip = ? AND in_game = '');");
+				$sth->execute($name, $player_list{$name}{ip});
+			}
+			elsif (!$db_player_list{$ip} ne $name) {
+				my $sth = $dbh->prepare("INSERT INTO players (ip,in_game,date) VALUES( ? , ?, NOW() );");
+				eval($sth->execute($ip, $name));
+			}
+		}
+		else {
+			my $sth = $dbh->prepare("INSERT INTO players (ip,in_game,date) VALUES( ? , ?, NOW() );");
+			$sth->execute($ip, $name);
+		}
+	}
+
+	Name: foreach my $name (keys %db_player_list_bname) {
+		my $ip = $db_player_list_bname{$name};
+		if ($name == '') {
+			next Name;
+		}
+
+		# If the player is not logged onto the server, and their ip is set (ip shuld always be set, but just in case)
+		if (!$player_list{$name} && $db_player_list{$ip}) {
+			# If player's name is equal to the one returned by $db_player_list we set their in_game to be null (in theory there could be multiple players per ip, but
+			if ($db_player_list{$ip} eq $name) {
+				my $sth = $dbh->prepare("UPDATE players SET in_game = '' WHERE ip = ? AND in_game = ?;");
+				$sth->execute($ip, $name);
+			}
+			else {
+				my $sth = $dbh->prepare("DELETE FROM players WHERE ip = ? AND in_game = ?;");
+				$sth->execute($ip, $name);
+			}
+		}
+	}
+}

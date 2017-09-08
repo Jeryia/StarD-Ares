@@ -1,0 +1,3 @@
+#!perl
+system("perl", "./serverEvents/playerLogin", @ARGV);
+

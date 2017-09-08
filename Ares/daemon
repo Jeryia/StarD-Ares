@@ -36,6 +36,19 @@ my %config = %{stard_read_config("$ares_home/ares.cfg")};
 my %last_notification = ();
 # global variable used to store the percentage increate that giving credits recieves.
 
+# database handle (should ee have one)
+my $dbh;
+
+if ($config{General}{use_mysql}) {
+	require DBI;
+	$dbh = DBI->connect("DBI:mysql:database=$config{database};host=$config{db_host}",
+E
+		$config{db_user}, $config{db_passwd},
+		{'RaiseError' => 1}
+	);
+	my $sth = $dbh->prepare("INSERT IGNORE INTO state (name, value) VALUES( ?, ? );");
+	eval($sth->execute('game_state', 'waiting_for_players'));
+}
 
 my %sector_state;
 
@@ -100,6 +113,12 @@ sub main {
 			$state_time=0;
 			stard_broadcast("You can view the progress of the game at any time with the !status command.");
 			stard_broadcast("To see how to play type !ares_help");
+
+			if ($config{General}{use_mysql}) {
+				my $sth = $dbh->prepare("UPDATE state SET value = ? WHERE name =  'game_state';");
+				eval($sth->execute($status));
+			}
+
 			if (
 				($new_status eq "waiting_for_players" || 
 				$new_status eq "waiting_start" )
@@ -180,6 +199,7 @@ sub waiting_start {
 	faction_players(\%player_list);
 
 	if (@players < $config{General}{min_players}) {
+		stard_countdown(0, "Game starting in:");
 		stard_broadcast("Notice: Too few players are online to start a game. Waiting for players to join.");
 		stdout_log("No longer have enoug players. Switching to waiting_for_players", 5);
 		return "waiting_for_players";
