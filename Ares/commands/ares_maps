@@ -5,15 +5,14 @@ use lib("./lib");
 use ares_core;
 use ares_map;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Message;
+use Stard::Log;
 
 $|=1;
 
 ## setup environment
-stard_setup_run_env("./../../");
-ares_setup_run_env('.');
+starmade_setup_lib_env("./../../");
 
 
 
@@ -29,10 +28,10 @@ sub main {
 	my $cur_map = ares_get_cur_map();
 
 	if ($cur_map) {
-		stard_pm($player, "Current Map: $cur_map");
+		starmade_pm($player, "Current Map: $cur_map");
 	}
-	stard_pm($player, "Available Maps:");
+	starmade_pm($player, "Available Maps:");
 	foreach my $map (@maps) {
-		stard_pm($player, $map);
+		starmade_pm($player, $map);
 	};
 };

@@ -6,15 +6,14 @@ use ares_core;
 use ares_vote;
 use ares_map;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Message;
+use Stard::Log;
 
 $|=1;
 
 ## setup environment
 ares_setup_run_env('.');
-stard_setup_run_env("./../../");
 
 
 
@@ -38,10 +37,10 @@ sub main {
 	
 	if ($match) {
 		ares_vote_for($player, $map);
-		stard_broadcast("$player, your vote has been cast");
+		starmade_broadcast("$player, your vote has been cast");
 	}
 	else {
-		stard_pm($player, "The map you voted for doesn't exist!");
+		starmade_pm($player, "The map you voted for doesn't exist!");
 		usage($player);
 	}
 };
@@ -49,6 +48,6 @@ sub main {
 
 sub usage {
 	my $player = $_[0];
-	stard_pm($player, "stard_vote <map>");
-	stard_pm($player, "desc: vote for the map you want to play next game. To see what maps are available type !ares_maps");
+	starmade_pm($player, "ares_vote <map>");
+	starmade_pm($player, "desc: vote for the map you want to play next game. To see what maps are available type !ares_maps");
 }

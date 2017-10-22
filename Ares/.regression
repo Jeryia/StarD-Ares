@@ -1,0 +1,218 @@
+#!perl
+use strict;
+use warnings;
+
+use lib("../../lib/perl");
+use Starmade::Regression;
+
+use lib('./lib');
+use ares_core;
+use ares_game;
+use ares_map;
+use ares_object;
+use ares_player;
+use ares_vote;
+use ares_launch;
+
+use Stard::Log;
+set_loglevel(3);
+
+main(@ARGV);
+exit 0;
+
+sub main {
+	# stop ares deamon to prevent it from interfering with the regression testing
+	system('../../bin/stard_daemons', 'stop-plugins');
+	test_result("ares_setup_run_env- returns ok", ares_setup_run_env('.'));
+	my $player = shift(@_);
+
+	test_core($player);
+	test_launch($player);
+	test_player($player);
+	test_object($player);
+	test_map($player);
+	test_game($player);
+
+
+	# return deamons to normal.
+	system('../../bin/stard_daemons', 'start-plugins');
+}
+
+sub test_core {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Core";
+
+	test_result("$test_suite: ares_get_config_field", ares_get_config_field('team_number'));
+}
+
+sub test_launch {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Launch";
+
+	## ares_start_new_game
+	test_result("$test_suite: ares_start_new_game - without map", ares_start_new_game());
+	test_result("$test_suite: ares_start_new_game - with map", ares_start_new_game('system_wars'));
+}
+
+sub test_game {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Game";
+
+	## ares_set_game_state/ares_get_game_state
+	test_result("$test_suite: ares_set_game_state retuns ''", ares_set_game_state(''));
+	test_result("$test_suite: ares_get_game_state retuns ''", ares_get_game_state() eq '');
+	test_result("$test_suite: ares_set_game_state retuns 'waiting_for_players'", ares_set_game_state('waiting_for_players'));
+	test_result("$test_suite: ares_get_game_state retuns 'waiting_for_players'", ares_get_game_state() eq 'waiting_for_players');
+	test_result("$test_suite: ares_set_game_state retuns 'waiting_start'", ares_set_game_state('waiting_start'));
+	test_result("$test_suite: ares_get_game_state retuns 'waiting_start'", ares_get_game_state() eq 'waiting_start');
+	test_result("$test_suite: ares_set_game_state retuns 'in_progress'", ares_set_game_state('in_progress'));
+	test_result("$test_suite: ares_get_game_state retuns 'in_progress'", ares_get_game_state() eq 'in_progress');
+	test_result("$test_suite: ares_set_game_state retuns 'complete'", ares_set_game_state('complete'));
+	test_result("$test_suite: ares_get_game_state retuns 'in_progress'", ares_get_game_state() eq 'complete');
+	test_result("$test_suite: ares_set_game_state retuns 'invalid'", !ares_set_game_state('invalid'));
+	test_result("$test_suite: ares_get_game_state retuns 'complete'", ares_get_game_state() eq 'complete');
+
+	## ares_defeat
+	ares_start_new_game('system_wars');
+	ares_set_game_state('in_progress');
+	test_result("$test_suite: ares_defeat - returns ok", ares_defeat(ares_team_to_faction(1)));
+	test_result("$test_suite: ares_defeat - ends game", ares_get_game_state() eq 'complete');
+
+	## ares_game_status_string
+	test_result("$test_suite: ares_game_status_string", ares_game_status_string(ares_team_to_faction(1)));
+	test_result("$test_suite: ares_game_status_string - no faction", ares_game_status_string(0));
+	test_result("$test_suite: ares_game_status_string - base", ares_game_status_string(ares_team_to_faction(1), 'base'));
+	test_result("$test_suite: ares_game_status_string - control", ares_game_status_string(ares_team_to_faction(1), 'control'));
+
+	## ares_clean_all
+	test_result("$test_suite: ares_clean_all - returns ok", ares_clean_all());
+	my %faction_sizes = %{ares_get_faction_sizes()};
+	for my $faction (keys %faction_sizes) {
+		test_result("$test_suite: ares_clean_all - faction $faction clean", $faction_sizes{$faction} == 0);
+	}
+	test_result("$test_suite: ares_clean_all - cleaned map", !ares_get_cur_map());
+
+	## ares_objectives_owned
+	ares_start_new_game('system_wars');
+	ares_set_game_state('in_progress');
+	test_result("$test_suite: ares_objectives_owned - currect value", ares_objectives_owned(ares_team_to_faction(1)) == 4);
+
+	## ares_get_credit_scaling
+	test_result("$test_suite: ares_get_credit_scaling - returns ok", ares_get_credit_scaling());
+
+
+}
+
+sub test_map {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Map";
+
+	## ares_get_map_list
+	my @map_list = @{ares_get_map_list()};
+	test_result("$test_suite: ares_get_map_list", @map_list);
+
+	## ares_set_cur_map/ares_get_cur_map
+	test_result("$test_suite: ares_set_cur_map: valid map", ares_set_cur_map($map_list[0]));
+	test_result("$test_suite: ares_get_cur_map: correct value", ares_get_cur_map() eq $map_list[0]);
+	test_result("$test_suite: ares_set_cur_map: invalid map", !ares_set_cur_map('taasf'));
+	test_result("$test_suite: ares_get_cur_map: value hasn't changed", ares_get_cur_map() eq $map_list[0]);
+	test_result("$test_suite: ares_set_cur_map: unset", ares_set_cur_map());
+	test_result("$test_suite: ares_get_cur_map: is unset", !ares_get_cur_map());
+
+	## ares_ck_map_config
+	my %map_config = ();
+	$map_config{General}{map_center} = '8 8 8';
+	$map_config{Alpha_base}{blueprint} = 'Ares Home Base Lite';
+	$map_config{Alpha_base}{sector} = '0 8 0';
+	$map_config{Alpha_base}{owner} = 1;
+	$map_config{Alpha_base}{objective} = 1;
+	$map_config{Alpha_base}{home} = 1;
+	$map_config{Alpha_base}{spawn} = '16.0 -4.1 18.0';
+	$map_config{Beta_base}{blueprint} = 'Ares Home Base Lite';
+	$map_config{Beta_base}{sector} = '0 -8 0';
+	$map_config{Beta_base}{owner} = 2;
+	$map_config{Beta_base}{objective} = 1;
+	$map_config{Beta_base}{home} = 1;
+	$map_config{Beta_base}{spawn} = '16.0 -4.1 18.0';
+	test_result("$test_suite: ares_ck_map_config valid map", ares_ck_map_config(\%map_config));
+	delete $map_config{Alpha_base}{sector};
+	test_result("$test_suite: ares_ck_map_config missing sector", !ares_ck_map_config(\%map_config));
+	$map_config{Alpha_base}{sector} = '0 8 0';
+	delete $map_config{Alpha_base}{owner};
+	test_result("$test_suite: ares_ck_map_config missing owner", !ares_ck_map_config(\%map_config));
+	$map_config{Alpha_base}{owner} = 1;
+	delete $map_config{Alpha_base}{home};
+	test_result("$test_suite: ares_ck_map_config missing home", !ares_ck_map_config(\%map_config));
+
+	## ares_get_raw_map_config
+	%map_config = %{ares_get_raw_map_config("Maps/junkyard.map")};
+	test_result("$test_suite: ares_get_raw_map_config: got values", $map_config{Alpha_base}{owner});
+
+	## ares_get_map_config
+	ares_set_cur_map('junkyard');
+	%map_config = %{ares_get_map_config()};
+	test_result("$test_suite: ares_get_map_config: got values", $map_config{Alpha_base}{owner});
+	test_result("$test_suite: ares_get_map_config: real faction ids set", $map_config{Alpha_base}{owner} != 1);
+	test_result("$test_suite: ares_get_map_config: real sector set", $map_config{Alpha_base}{sector} eq '14 8 12');
+}
+
+sub test_object {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Object";
+
+	## ares_set_object_entity/ares_object_to_entity
+	test_result("$test_suite: ares_object_to_entity reset", ares_set_object_entity('blah', ''));
+	test_result("$test_suite: ares_get_map_list", ares_set_object_entity('blah', 'blah110'));
+	test_result("$test_suite: ares_object_to_entity validate", ares_object_to_entity('blah') eq 'blah110');
+
+	## ares_write_object_status/ares_read_object_status
+	test_result("$test_suite: ares_write_object_status: valid positive", ares_write_object_status('blah', 1));
+	test_result("$test_suite: ares_write_object_status: vaid positive", ares_read_object_status('blah') == 1);
+	test_result("$test_suite: ares_write_object_status: valid zero", ares_write_object_status('blah', 0));
+	test_result("$test_suite: ares_write_object_status valid zero", ares_read_object_status('blah') == 0);
+	test_result("$test_suite: ares_write_object_status: valid negative", ares_write_object_status('blah', -1));
+	test_result("$test_suite: ares_write_object_status valid negative", ares_read_object_status('blah') == -1);
+	test_result("$test_suite: ares_write_object_status: invalid negative", !ares_write_object_status('blah', 'cat'));
+	test_result("$test_suite: ares_write_object_status didn't change", ares_read_object_status('blah') == -1);
+
+	my $object_name = "test thing";
+	my %object_data = ();
+	$object_data{sector} = '0 0 0';
+	$object_data{blueprint} = 'Ares Home Base Lite';
+	$object_data{type} = 'station';
+	$object_data{owner} = ares_team_to_faction(1);
+	test_result("$test_suite: ares_write_object_status didn't change", ares_place_object($object_name, \%object_data));
+}
+
+sub test_player {
+	my $player = shift(@_);
+	my $test_suite = "Ares - Player";
+
+	## ares_new_player_setup
+	test_result("$test_suite: ares_new_player_setup returns 0", ares_new_player_setup($player, ares_team_to_faction(1)));
+
+	## ares_get_player_factions/
+	my @factions = @{ares_get_player_factions()};
+	test_result("$test_suite: ares_get_player_factions - returns data", @factions);
+	for my $faction (@factions) {
+		test_result("$test_suite: ares_player_faction_valid - $faction", ares_player_faction_valid($faction));
+	}
+
+	## ares_get_all_factions/
+	@factions = @{ares_get_all_factions()};
+	test_result("$test_suite: ares_get_all_factions - returns data", @factions);
+
+	## ares_get_faction_sizes
+	my %faction_sizes = %{ares_get_faction_sizes()};
+	test_result("$test_suite: ares_get_faction_sizes - returns data", %faction_sizes);
+	foreach my $faction (keys %faction_sizes) {
+		test_result("$test_suite: ares_player_faction_valid - $faction", ares_player_faction_valid($faction));
+	}
+	
+	## ares_set_starting_credits/ares_get_starting_credits
+	test_result("$test_suite: ares_set_starting_credits - valid", ares_set_starting_credits(10));
+	test_result("$test_suite: ares_get_starting_credits - valid set", ares_get_starting_credits() == 10);
+	test_result("$test_suite: ares_set_starting_credits - invalid", !ares_set_starting_credits('pie'));
+	test_result("$test_suite: ares_get_starting_credits - invalid not set", ares_get_starting_credits() == 10);
+}
+	

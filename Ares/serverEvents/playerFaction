@@ -8,11 +8,12 @@ use ares_player;
 use ares_game;
 
 use lib("../../lib");
-use stard_lib;
-use stard_log;
+use Starmade::Message;
+use Starmade::Player;
+use Starmade::Sector;
+use Stard::Log;
 
 ares_setup_run_env('.');
-stard_setup_run_env("./../../");
 
 main(@ARGV);
 exit 0;
@@ -42,7 +43,7 @@ sub main {
 				$faction_sizes{$faction_id} >= $faction_sizes{$faction2}
 			) {
 				my $message = "You can only switch factions if the team you are joining has less players.";
-				stard_pm($player, $message);
+				starmade_pm($player, $message);
 				ares_fix_faction($player);
 				exit 0;
 			}
@@ -53,19 +54,19 @@ sub main {
 		exit 0;
 	}
 
-	if (ares_faction_valid($faction_id)) {
+	if (ares_player_faction_valid($faction_id)) {
 		my $old_faction = ares_get_player_faction($player);
 		if ($old_faction == $faction_id) {
 			exit 0;
 		}
 		ares_add_faction_member($player, $faction_id);
 		my $home = ares_get_faction_home($faction_id);
-		stard_change_sector_for($player, $home);
-		stard_set_spawn_player($player);
-		stard_broadcast("$player has changed factions to " . ares_get_faction_name($faction_id));
+		starmade_change_sector_for($player, $home);
+		starmade_set_spawn_player($player);
+		starmade_broadcast("$player has changed factions to " . ares_get_faction_name($faction_id));
 	}
 	else {
-		stard_pm($player, "The faction you tried to join is an NPC faction. This is not permitted");
+		starmade_pm($player, "The faction you tried to join is an NPC faction. This is not permitted");
 		ares_fix_faction($player);
 	}
 	ares_player_unlock($lock_fh);

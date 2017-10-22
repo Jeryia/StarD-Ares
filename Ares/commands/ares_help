@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 ## setup environment
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Message;
+use Stard::Log;
 
 use lib("./lib");
 use ares_core;
@@ -13,7 +13,6 @@ my $ares_home = '.';
 my $ares_spool = "$ares_home/spool";
 my $stard_home = "$ares_home/../..";
 
-stard_setup_run_env($stard_home);
 ares_setup_run_env('.');
 
 
@@ -59,10 +58,10 @@ sub main {
 		$message .= "Type !ares_maps to see a list of available maps, and !ares_vote <map> to vote for the next map to play";
 	}
 	else {
-		stard_pm($player, "Unknown Topic: $topic");
+		starmade_pm($player, "Unknown Topic: $topic");
 		usage($player);
 	}
-	stard_pm($player, $message);
+	starmade_pm($player, $message);
 };	
 		
 sub usage {
@@ -75,6 +74,6 @@ sub usage {
 	$message .= "money - how you get credits\n";
 	$message .="building - about building ships\n";
 	$message .="voting - how to vote for the next map\n";
-	stard_pm($player, $message);
+	starmade_pm($player, $message);
 	exit 0;
 }

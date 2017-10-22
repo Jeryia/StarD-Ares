@@ -3,20 +3,25 @@ package ares_object;
 use strict;
 use warnings;
 
+use Carp;
+
 use lib("./lib");
 use ares_core;
 use ares_player;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Base;
+use Starmade::Map;
+use Starmade::Sector;
+use Stard::Base;
+use Stard::Log;
 
 
 our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_object_to_entity ares_set_object_entity ares_write_object_status ares_read_object_status ares_object_status_to_string ares_place_object ares_spawn_mobs ares_spawn_defenders);
+@EXPORT = qw(ares_object_to_entity ares_set_object_entity ares_write_object_status ares_read_object_status ares_object_status_to_string ares_place_object ares_spawn_defenders);
 
 
 
@@ -55,6 +60,11 @@ sub ares_write_object_status {
 	my $object = $_[0];
 	my $state = $_[1];
 
+	if (!($state=~/^-?\d+$/)) {
+		carp("ares_write_object_status: state must be an integer. '$state' is invalid!");
+		return 0;
+	}
+
 	stdout_log("Setting state of '$object' to $state", 5);
 	open(my $station_fh, ">", "$ares_core::ares_state_objects/$object") or
 		stdout_log("Failed: writing to file '$ares_core::ares_state_objects/$object': $!", 3);
@@ -68,6 +78,8 @@ sub ares_write_object_status {
 # OUTPUT: object status (this should be a faction id for it's ownership)
 sub ares_read_object_status {
 	my $object = $_[0];
+
+
 	open(my $station_fh, "<", "$ares_core::ares_state_objects/$object");
 	my $state = join('',<$station_fh>);
 	close($station_fh);
@@ -112,14 +124,14 @@ sub ares_place_object {
 	my $name = $_[0];
 	my %object = %{$_[1]};
 
-	stdout_log("Creating: $name", 6);
+	stdout_log("Creating Object: $name", 6);
 	my $sector = $object{sector};
 	my $blueprint = $object{blueprint};
 	my $type = $object{type};
 	my $owner = $object{owner};
 	my $entity = "$name\_" . time();
 	
-	my %sector_info = %{stard_sector_info($sector)};
+	my %sector_info = %{starmade_sector_info($sector)};
 	my %entities = ();
 
 	if ($sector_info{entity}) {
@@ -127,12 +139,12 @@ sub ares_place_object {
 	}
 
 	# Remove Stations in the sector
-	stard_cmd("/load_sector_range $sector $sector");
+	starmade_cmd("/load_sector_range $sector $sector");
 	foreach my $entity (keys %entities) {
 		if ($entity =~s/ENTITY_SPACESTATION_//) {
-			if (!stard_despawn_sector($entity, "all", "0", $sector)) {
-				stard_boardcast("Error Despawning Sector $sector.\n");
-				print stard_last_output();
+			if (!starmade_despawn_sector($entity, "all", "0", $sector)) {
+				starmade_boardcast("Error Despawning Sector $sector.\n");
+				print starmade_last_output();
 				stdout_log("Error Despawning Sector $sector... Aborting game start", 1);
 				return 0;
 			}
@@ -147,9 +159,9 @@ sub ares_place_object {
 		my $pos = '0 0 0';
 		my $npc = ares_get_faction_npc($owner);
 		stdout_log("Spawning '$name' in sector '$sector' with owner '$npc'", 6);
-		if (!stard_spawn_entity_pos($blueprint, $entity, $sector, $pos, $npc, 0)) {
-			stard_broadcast("Error Spawning $name at $sector.\n");
-			print stard_last_output();
+		if (!starmade_spawn_entity_pos($blueprint, $entity, $sector, $pos, $npc, 0)) {
+			starmade_broadcast("Error Spawning $name at $sector.\n");
+			print starmade_last_output();
 			stdout_log("Error Spawning $name at $sector... Aborting game start", 1);
 			return 0;
 		}
@@ -157,50 +169,15 @@ sub ares_place_object {
 	else {
 		my $pos = '0 0 0';
 		stdout_log("Spawning '$name' in sector '$sector' with owner '$owner'", 6);
-		if (!stard_spawn_entity_pos($blueprint, $entity, $sector, $pos, $owner, 0)) {
-			stard_broadcast("Error Spawning $name at $sector.\n");
-			print stard_last_output();
+		if (!starmade_spawn_entity_pos($blueprint, $entity, $sector, $pos, $owner, 0)) {
+			starmade_broadcast("Error Spawning $name at $sector.\n");
+			print starmade_last_output();
 			stdout_log("Error Spawning $name at $sector... Aborting game start", 1);
 			return 0;
 		}
 	}
 	ares_set_object_entity($name, $entity);
 	return 1;
-}
-
-## ares_spawn_mobs
-# Spawn a group of entities, or die
-# INPUT1: List of blueprints
-# INPUT2: List of positions to spawn them at
-# INPUT3: Faction to spawn them as
-# INPUT4: Sector to spawn them in
-# INPUT5: enable ai (true or false)
-sub ares_spawn_mobs {
-	my @ships = @{$_[0]};
-	my @ship_pos = @{$_[1]};
-	my $faction = $_[2];
-	my $sector = $_[3];
-	my $ai = $_[4];
-
-	my $i;
-	for ($i = 0; $i <= $#ships; $i++) {
-		my $ship = $ships[$i];
-
-		my $name = "$ship-$sector" . time() . "_$i";
-		if (@ship_pos) {
-			my $pos = $ship_pos[$i];
-			if (!stard_spawn_entity_pos($ship, $name, $sector, $pos, $faction, 'true')) {
-				print stard_last_output();
-				stdout_log("Error spawning ship '$ship' with '$name'...", 1);
-			};
-		}
-		else {
-			if (!stard_spawn_entity($ship, $name, $sector, $faction, 'true')) {
-				print stard_last_output();
-				stdout_log("Error spawning ship '$ship' with '$name'...", 1);
-			};
-		};
-	};
 }
 
 ## ares_spawn_defenders
@@ -216,7 +193,6 @@ sub ares_spawn_defenders {
 	my $sector = $object{sector};
 	my $npc = ares_get_faction_npc($object{owner});
 
-	
 	my $defender_faction = $object{owner};
 	if ($object{owner} == -2) {
 		$defender_faction = -1;
@@ -224,7 +200,7 @@ sub ares_spawn_defenders {
 	if ($npc) {
 		$defender_faction=$npc;
 	}
-	ares_spawn_mobs(\@defenders, \@pos, $defender_faction, $sector, 1);
+	starmade_spawn_mobs_bulk(\@defenders, \@pos, $defender_faction, $sector, 1);
 }
 
 

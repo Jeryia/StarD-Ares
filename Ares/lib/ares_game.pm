@@ -1,7 +1,9 @@
 package ares_game;
-
 use strict;
 use warnings;
+
+use Carp;
+use File::Path;
 
 use lib("./lib");
 use ares_core;
@@ -9,9 +11,14 @@ use ares_player;
 use ares_map;
 use ares_object;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Base;
+use Starmade::Map;
+use Starmade::Message;
+use Starmade::Player;
+use Starmade::Faction;
+use Starmade::Sector;
+use Stard::Log;
 
 
 our (@ISA, @EXPORT);
@@ -23,9 +30,19 @@ require Exporter;
 
 ## ares_set_game_state
 # Set the current game state
-# INPUT1: state to set the game in (waiting_for_players, waiting_start, in_progress, or completed)
+# INPUT1: state to set the game in (waiting_for_players, waiting_start, in_progress, or complete)
 sub ares_set_game_state {
 	my $state = $_[0];
+	if (
+		$state ne 'waiting_for_players' &&
+		$state ne 'waiting_start' &&
+		$state ne 'in_progress' &&
+		$state ne 'complete' &&
+		$state ne ''
+	) {
+		carp("ares_set_game_state: invalid state given: $state\n");
+		return 0;
+	}
 
 	stdout_log("Setting game state to '$state'", 5);
 	open(my $state_fh, ">", "$ares_core::ares_state/Status") or return;
@@ -35,7 +52,7 @@ sub ares_set_game_state {
 
 ## ares_get_game_state
 # Get the current game state
-# OUTPUT: state of the game (waiting_for_players, waiting_start, in_progress, or completed)
+# OUTPUT: state of the game (waiting_for_players, waiting_start, in_progress, or complete)
 sub ares_get_game_state {
 	open(my $state_fh, "<", "$ares_core::ares_state/Status") or return;
 	my $state =  join("",<$state_fh>);
@@ -50,19 +67,23 @@ sub ares_get_game_state {
 # INPUT1: faction id
 sub ares_defeat {
 	my $faction = $_[0];
-	my @faction_ids = @{ares_get_factions()};
+
+	if (!($faction=~/^-?\d+$/)) {
+		carp("ares_defeat: invalid faction id given '$faction'");
+		return 0;
+	}
+
+	my @faction_ids = @{ares_get_player_factions()};
 	my $faction_name = ares_get_faction_name($faction);
 
-	print "ares_defeated: $faction\n";
 	stdout_log("Faction '$faction' has been defeated", 5);
 	open(my $faction_fh, ">", "$ares_core::ares_state_faction/$faction/State");
 	print $faction_fh "Defeated";
 	close($faction_fh);
-	stard_broadcast("$faction_name has been DEFEATED!");
+	starmade_broadcast("$faction_name has been DEFEATED!");
 	
 	my @surviving;
 	foreach my $id (@faction_ids) {
-		
 		open(my $faction_fh, "<", "$ares_core::ares_state_faction/$id/State");
 		my $state = join("", <$faction_fh>);
 		close($faction_fh);
@@ -74,7 +95,7 @@ sub ares_defeat {
 	
 	if (@surviving == 1) {
 		my $faction_name = ares_get_faction_name($surviving[0]);
-		stard_broadcast("$faction_name is VICTORIOUS!");
+		starmade_broadcast("$faction_name is VICTORIOUS!");
 		stdout_log("Faction '$faction_name' is victorious", 5);
 		ares_set_game_state("complete");
 	}
@@ -88,6 +109,19 @@ sub ares_defeat {
 sub ares_game_status_string {
 	my $faction = $_[0];
 	my $type = $_[1];
+
+	if (!($faction=~/^-?\d+$/)) {
+		carp("ares_game_status_string: invalid faction id given '$faction'");
+		return 0;
+	}
+	if (!(
+		!$type ||
+		$type eq 'base' ||
+		$type eq 'control'
+	)) {
+		carp("ares_game_status_string: invalid type given: '$type'");
+		return 0;
+	}
 
 
 
@@ -135,88 +169,68 @@ sub ares_game_status_string {
 };
 
 ## ares_clean_all
-# Clean up the game (generally clean up a game that's completed so a new one can start)
+# Clean up the game (generally clean up a game that's complete so a new one can start)
 sub ares_clean_all {
-	ares_set_game_state("completed");
+	ares_set_game_state("complete");
 	stdout_log("Cleaning up everything from the last game, and a little more", 5);
 
-	my @factions = @{ares_get_factions()};
+	my @factions = @{ares_get_player_factions()};
 
 	foreach my $faction_id (@factions) {
 		if ($faction_id > 0) {
-			#my @members = @{ares_get_faction_members($faction_id)};
-			#foreach my $member (@members) {
-			#	ares_unfaction_player($member);
-			#}
 			stdout_log("Clearing faction '$faction_id'", 6);
 			unlink("$ares_core::ares_state_faction/$faction_id/State");
 			unlink("$ares_core::ares_state_faction/$faction_id/Players");
 			unlink("$ares_core::ares_state_faction/$faction_id/Home");
 			unlink("$ares_core::ares_state_faction/$faction_id/Spawn");
-			stard_faction_delete($faction_id);
-			stard_faction_create(ares_get_faction_name($faction_id), '', $faction_id);
+			starmade_faction_delete($faction_id);
+			starmade_faction_create(ares_get_faction_name($faction_id), '', $faction_id);
 		};
 	};
 
-	my @players = keys %{stard_player_list()};
+	my @players = keys %{starmade_player_list()};
 
 	foreach my $player (@players) {
 		stdout_log("Cleaning $player", 6);
-		stard_give_all_items($player, -1000000);
-		stard_give_credits($player, -2000000000);
-		stard_change_sector_for($player, '2 2 2');
-		stard_teleport_to($player, '0 0 0');
+		starmade_give_all_items($player, -1000000);
+		starmade_give_credits($player, -2000000000);
+		starmade_change_sector_for($player, '2 2 2');
+		starmade_teleport_to($player, '0 0 0');
 	}
 
 	stdout_log("Deleting everything", 6);
-	if (!stard_despawn_all("", "all", "0")) {
-		stard_pm("Error Despawning Everything.");
-		print stard_last_output();
-		stdout_log("Error Despawning Sector Everything", 1);
-		exit 0;
+	if (!starmade_despawn_all("", "all", "0")) {
+		starmade_pm("Error Despawning Everything.");
+		print starmade_last_output();
+		stdout_log("Error Despawning Sector Everything", 0);
+		return 0;
 	};
 
 	my %map_config = %{ares_get_map_config()};
+	starmade_clean_map_area(\%map_config, 'full');
 	if (keys %map_config) {
 		foreach my $entity (keys %map_config) {
-			my $sector = $map_config{$entity}{sector};
-		
-			stdout_log("Deleting sector '$sector'", 6);
-			stard_cmd("/load_sector_range $sector $sector");
-			if (!stard_despawn_sector("", "all", "0", $sector)) {
-				stard_broadcast("Error Despawning Sector $sector.");
-				print stard_last_output();
-				stdout_log("Error Despawning Sector '$sector'", 1);
-				exit 0;
-			};
-			stdout_log("Deleting all '$entity'", 6);
-			if (!stard_despawn_all("$entity", "all", "0")) {
-				stard_broadcast("Error Despawning All '$entity'");
-				print stard_last_output();
-				stdout_log("Error Despawning All '$entity'", 1);
-				exit 0;
-			};
 			unlink("$ares_core::ares_state/Objects/$entity");
 			unlink("$ares_core::ares_state/Objects/$entity.entity");
 		};
-
 		unlink("$ares_core::ares_state/map");
 		unlink("$ares_core::ares_state/cur.map");
 		unlink("$ares_core::ares_state/Accounts");
 		unlink("$ares_core::ares_state/vote");
 	}
+	ares_set_cur_map();
 
 
 	stdout_log("Despawning Sector '2 2 2'", 6);
-	if (!stard_despawn_sector("", "all", "0", "2 2 2")) {
-		stard_broadcast("Error Despawning Sector 2 2 2.");
-		print stard_last_output();
-		stdout_log("Error Despawning Sector 2 2 2.", 1);
-		exit 0;
+	if (!starmade_despawn_sector("", "all", "0", "2 2 2")) {
+		starmade_broadcast("Error Despawning Sector 2 2 2.");
+		print starmade_last_output();
+		stdout_log("Error Despawning Sector 2 2 2.", 0);
+		return 0;
 	};
 	
 	if (
-		$ares_core::ares_home =~/\S\S+/ &&
+		$ares_core::ares_home =~/\S/ &&
 		! ($ares_core::ares_state =~/\.\.$/) &&
 		! ($ares_core::ares_state =~/\.\.\/$/)
 	) {
@@ -225,9 +239,10 @@ sub ares_clean_all {
 		rmtree("$ares_core::ares_state/Players");
 	}
 	else {
-		print "didn't clean up state dir $ares_core::ares_state\n\n";
+		stdout_log("didn't clean up state dir $ares_core::ares_state\n\n", 2);
 	}
 	stdout_log("Cleaning Complete", 5);
+	return 1;
 }
 
 ## ares_objectives_owned
@@ -236,6 +251,11 @@ sub ares_clean_all {
 # OUTPUT: Number of objectives currently owned.
 sub ares_objectives_owned {
 	my $faction_id = $_[0];
+
+	if (!($faction_id=~/^-?\d+$/)) {
+		carp("ares_objectives_owned: invalid faction id given '$faction_id'");
+		return 0;
+	}
 
 	my $objectives;
 	my %ares_map_config = %{ares_get_map_config()};
@@ -247,6 +267,7 @@ sub ares_objectives_owned {
 			$objectives++;
 		};
 	};
+	return $objectives;
 };
 
 

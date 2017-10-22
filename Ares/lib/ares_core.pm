@@ -3,9 +3,12 @@ package ares_core;
 use strict;
 use warnings;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use Carp;
+
+use lib("../../lib/perl");
+use Starmade::Base;
+use Stard::Base;
+use Stard::Log;
 
 ## global settings (should only be set once, and never changed again)
 our $ares_home;
@@ -32,6 +35,15 @@ require Exporter;
 # INPUT1: location of ares plugin
 sub ares_setup_run_env {
 	$ares_home = $_[0];
+
+	if (!(
+		-d $ares_home ||
+		-d "$ares_home/ares.cfg"
+	)) {
+		carp("ares_setup_run_env: invalid ares home dir given: '$ares_home'");
+		return 0;
+	}
+
 	my $stard_home = "$ares_home/../..";
 	$ares_state = "$ares_home/State";
 	$ares_state_faction = "$ares_state/Factions";
@@ -40,7 +52,7 @@ sub ares_setup_run_env {
 	$ares_data = "$ares_home/data";
 	$ares_maps = "$ares_home/Maps";
 
-	stard_setup_run_env($stard_home);
+	starmade_setup_lib_env($stard_home);
 	stdout_log("Setting up Run environment with '$ares_home' as ares_home", 6);
 
 	%ares_config = %{stard_read_config("$ares_home/ares.cfg")};

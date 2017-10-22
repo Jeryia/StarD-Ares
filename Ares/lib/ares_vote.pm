@@ -2,13 +2,10 @@ package ares_vote;
 use strict;
 use warnings;
 
+use Carp;
+
 use lib("./lib");
 use ares_core;
-
-use lib("../../lib");
-use stard_lib;
-use stard_log;
-
 
 our (@ISA, @EXPORT);
 

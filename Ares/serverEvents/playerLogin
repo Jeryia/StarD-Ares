@@ -17,7 +17,7 @@ ares_setup_run_env('.');
 starmade_setup_lib_env("./../../");
 
 my $ares_player_state = "./State/Players";
-my %config = %{stard_read_config("$ares_home/ares.cfg")};
+my %config = %{stard_read_config("ares.cfg")};
 
 main(@ARGV);
 exit 0;

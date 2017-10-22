@@ -8,14 +8,13 @@ use ares_map;
 use ares_game;
 use ares_object;
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Base;
+use Stard::Log;
 
 $|=1;
 
 ares_setup_run_env('.');
-stard_setup_run_env("./../../");
 
 main(@ARGV);
 exit 0;

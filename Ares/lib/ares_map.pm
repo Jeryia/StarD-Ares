@@ -4,15 +4,19 @@ use strict;
 use warnings;
 
 use File::Copy;
+use Carp;
 
 use lib("./lib");
 use ares_core;
 use ares_player;
 
 
-use lib("../../lib");
-use stard_lib;
-use stard_log;
+use lib("../../lib/perl");
+use Starmade::Map;
+use Starmade::Message;
+use Starmade::Misc;
+use Stard::Base;
+use Stard::Log;
 
 
 our (@ISA, @EXPORT);
@@ -28,12 +32,26 @@ my %blank_hash = ();
 # Get the current ares map config, and set it's relavant variables to the actual in game ones
 # OUTPUT: 2d hash of the map config
 sub ares_get_map_config {
-	my %ares_map_config = %{ares_get_raw_map_config("$ares_core::ares_state/cur.map")};
+	if (! -e "$ares_core::ares_state/cur.map") {
+		stdout_log("No current map found", 5);
+		return {};
+	}
 
+	my %ares_map_config = %{ares_get_raw_map_config("$ares_core::ares_state/cur.map")};
+	my $center;
+	if ($ares_map_config{General} && $ares_map_config{General}{map_center}) {
+		$center = $ares_map_config{General}{map_center}
+	}
+	elsif ($ares_core::ares_config{General}{map_center}) {
+		$center = $ares_core::ares_config{General}{map_center};
+	}
+	if ($center) {
+		%ares_map_config = %{starmade_recenter_map(\%ares_map_config, $center)};
+	}
 	foreach my $entity (keys %ares_map_config) {
-		$ares_map_config{$entity}{sector} = stard_location_add($ares_core::ares_config{General}{map_center}, $ares_map_config{$entity}{sector});
-		
-		$ares_map_config{$entity}{owner} = ares_team_to_faction($ares_map_config{$entity}{owner});
+		if ($ares_map_config{$entity}{owner}) {
+			$ares_map_config{$entity}{owner} = ares_team_to_faction($ares_map_config{$entity}{owner});
+		}
 	};
 	return \%ares_map_config;
 }
@@ -45,41 +63,16 @@ sub ares_get_map_config {
 sub ares_get_raw_map_config {
 	my $map = $_[0];
 
+	if (!$map) {
+		carp("ares_get_raw_map_config: musts provide map file to open");
+		return {}
+	}
+
 	my %ares_map_config = %{stard_read_config($map)};
 	if (ares_ck_map_config(\%ares_map_config)) {
 		return \%ares_map_config;
 	};
-	return \%blank_hash;
-
-	if(open(my $map_fh, "<", $map)) {
-		my @lines = <$map_fh>;
-		my $object = "";
-		my $line_num =0;
-		foreach my $line (@lines) {
-			$line_num++;
-			if ($line=~/^#/ || !($line=~/\S/)) {
-			}
-			elsif ($line=~/^\[(.*)\]/) {
-				$object = $1;
-			}
-			elsif (
-				$line=~/^\s*(\S+)\s*=\s*"(.*)"/ ||
-				$line=~/^\s*(\S+)\s*=\s*'(.*)'/ ||
-				$line=~/^\s*(\S+)\s*=\s*(.*)/
-
-			) {
-				$ares_map_config{$object}{$1} = $2;
-			}
-			else {
-				print "Line $line_num not understood\n";
-				return \%blank_hash;
-			};
-		};
-		if (ares_ck_map_config(\%ares_map_config)) {
-			return \%ares_map_config;
-		};
-	};
-	return \%blank_hash;
+	return {};
 }
 
 ## ares_ck_map_config
@@ -90,33 +83,35 @@ sub ares_ck_map_config {
 	my %map_config = %{$_[0]};
 
 	my %home = ();
-		
+	if (!%map_config) {
+		return 0;
+	}
 
 	Object: foreach my $object (keys %map_config) {
 		if ($object eq "General") {
 			next Object;
 		}
 		if (!($map_config{$object}{sector})) {
-			stard_broadcast("Requested Map missing sector for '$object'");
+			starmade_broadcast("Requested Map missing sector for '$object'");
 			stdout_log("Error loading map: Requested Map missing sector for '$object'", 3);
 			return 0;
 		}
 		else {
 			if (!($map_config{$object}{sector}=~/^-?\d+ -?\d+ -?\d+/)) {
-				stard_broadcast("Error malformed sector '$map_config{$object}{sector}' for '$object'");
+				starmade_broadcast("Error malformed sector '$map_config{$object}{sector}' for '$object'");
 				stdout_log("Error loading map: Error malformed sector '$map_config{$object}{sector}' for '$object'", 3);
 				return 0;
 			}
 		}
 		if ( defined $map_config{$object}{owner} ) {
 			if (!($map_config{$object}{owner} =~/^-?\d+$/)) {
-				stard_broadcast("Error malformed owner '$map_config{$object}{owner}' for '$object'");
+				starmade_broadcast("Error malformed owner '$map_config{$object}{owner}' for '$object'");
 				stdout_log("Error loading map: Error malformed owner '$map_config{$object}{owner}' for '$object'", 3);
 				return 0;
 			}
 		}
 		else {
-			stard_broadcast("Requested Map missing owner for '$object'");
+			starmade_broadcast("Requested Map missing owner for '$object'");
 			stdout_log("Error loading map: Requested Map missing owner for '$object'", 3);
 			return 0;
 		}
@@ -127,7 +122,7 @@ sub ares_ck_map_config {
 
 	my @players = keys %home;
 	if (@players < 2) {
-		stard_broadcast("Requested has less than 2 home bases!");
+		starmade_broadcast("Requested has less than 2 home bases!");
 		stdout_log("Error loading map: Requested has less than 2 home bases", 3);
 		return 0;
 	}
@@ -150,16 +145,22 @@ sub ares_get_cur_map {
 sub ares_set_cur_map {
 	my $map = $_[0];
 
+	if (!$map) {
+		unlink("$ares_core::ares_state/map");
+		unlink("$ares_core::ares_state/cur.map");
+		return 1;
+	}
+
 	stdout_log("Setting current map to '$map'", 6);
-	open(my $map_fh, ">", "$ares_core::ares_state/map") or
-		stdout_log("Failed: writing to file '$ares_core::ares_state/map': $!", 3);
-	print $map_fh $map;
-	close($map_fh);
 	if(!copy("$ares_core::ares_maps/$map.map", "$ares_core::ares_state/cur.map")) {
 		warn "Failed to copy '$ares_core::ares_maps/$map.map' to '$ares_core::ares_state/cur.map'\n";
 		stdout_log("Failed: copying file '$ares_core::ares_maps/$map.map' to '$ares_core::ares_state/cur.map': $!", 3);
 		return 0;
 	}
+	open(my $map_fh, ">", "$ares_core::ares_state/map") or
+		stdout_log("Failed: writing to file '$ares_core::ares_state/map': $!", 3);
+	print $map_fh $map;
+	close($map_fh);
 	return 1;
 }
 
