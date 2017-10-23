@@ -9,8 +9,10 @@ use ares_object;
 use ares_player;
 use ares_vote;
 use ares_map;
+use ares_launch;
 
 use lib("../../lib/perl");
+use Starmade::Map;
 use Starmade::Misc;
 use Starmade::Message;
 use Starmade::Misc;
@@ -200,7 +202,7 @@ sub waiting_start {
 		return "waiting_for_players";
 	}
 	if ($state_time / 60 >= $config{General}{player_prep_time}) {
-		my @factions = @{ares_get_factions()};
+		my @factions = @{ares_get_player_factions()};
 		foreach my $faction (@factions) {
 			my $home = ares_get_faction_home($faction);
 
@@ -561,7 +563,7 @@ sub notify_every {
 sub corral_factions {
 	my %player_list = %{$_[0]};
 	
-	my @factions = @{ares_get_factions()};
+	my @factions = @{ares_get_player_factions()};
 	foreach my $faction (@factions) {
 		my @members = @{ares_get_faction_members($faction)};
 		my $home = ares_get_faction_home($faction);
