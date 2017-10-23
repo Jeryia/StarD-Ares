@@ -1,0 +1,130 @@
+[General]
+	starting_credits=15000000
+
+[Alpha_spawn]
+sector = '8 8 2'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 0
+owner = 1
+objective = 0
+can_capture = 0
+home = 1
+spawn = 16.0 -4.1 18.0
+
+[Beta_spawn]
+sector ='8 8 -3'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 0
+owner = 2
+objective = 0
+can_capture = 0
+home = 1
+spawn = 16.0 -4.1 18.0
+
+[Alpha_shop]
+sector = '8 8 3'
+blueprint = 'Ares Shop'
+type = 'station'
+value = 0
+owner = -2
+objective = 0
+can_capture = 0
+
+[Beta_shop]
+sector = '8 8 -4'
+blueprint = 'Ares Shop'
+type = station
+value = 00
+owner = -2
+objective = 0
+can_capture = 0
+
+[listening_post_alpha]
+sector = '8 8 0'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 1
+owner = 1
+objective = 1
+can_capture = 1
+defenders = TA Gunship,TA Gunship
+defender_pos = 0 100 0,0 -100 0 
+
+[listening_post_beta]
+sector = '8 8 -1'
+blueprint = 'Ares Mining Outpost'
+type = 'station'
+value = 1
+owner = 2
+objective = 1
+can_capture = 1
+defenders = TA Gunship,TA Gunship
+defender_pos = 0 100 0,0 -100 0
+
+[military_base_alpha1]
+sector = '11 8 3'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 2
+owner	= 1
+objective = 1
+can_capture = 0
+defenders = TA Gunship,TA Valkyrie
+defender_pos = 0 100 0,0 -100 0 
+
+[military_base_alpha2]
+sector = '5 8 3'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 2
+owner	= 1
+objective = 1
+can_capture = 0
+defenders = TA Gunship,TA Valkyrie
+defender_pos = 0 100 0,0 -100 0 
+
+[military_base_beta1]
+sector = '11 8 -4'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 2
+owner	= 2
+objective = 1
+can_capture = 0
+defenders = TA Gunship,TA Valkyrie
+defender_pos = 0 100 0,0 -100 0 
+
+[military_base_beta2]
+sector = '5 8 -4'
+blueprint = 'Ares Home Base Lite'
+type = 'station'
+value = 2
+owner	= 2
+objective = 1
+can_capture = 0
+defenders = TA Gunship,TA Valkyrie
+defender_pos = 0 100 0,0 -100 0 
+
+[factory_alpha]
+sector = '8 8 13'
+blueprint = 'Ares Massive Base'
+type = 'station'
+value = 3
+owner	= 1
+objective = 1
+can_capture = 0
+defenders = TA Missile Frigate Mk2 NT,TA Gunship,TA Gunship
+defender_pos = 100 0 0, 0 100 0,0 -100 0
+
+[factory_beta]
+sector = '8 8 -14'
+blueprint = 'Ares Massive Base'
+type = 'station'
+value = 2
+owner	= 2
+objective = 1
+can_capture = 0
+defenders = TA Missile Frigate Mk2 NT,TA Gunship,TA Gunship
+defender_pos = 100 0 0, 0 100 0,0 -100 0
