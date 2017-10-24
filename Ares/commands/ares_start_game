@@ -8,6 +8,7 @@ use ares_launch;
 
 use lib("../../lib/perl");
 use Starmade::Message;
+use Starmade::Player;
 use Stard::Log;
 
 ares_setup_run_env('.');

@@ -330,9 +330,9 @@ sub assign_remaining_players {
 	mkdir "$ares_state_player";
 	
 	for my $player (keys %player_data) {
-		ares_player_lock($player);
+		my $lock = ares_player_lock($player);
 		ares_new_player($player);
-		ares_player_unlock($player);
+		ares_player_unlock($lock);
 	};
 }
 
