@@ -2,7 +2,7 @@ package ares_player;
 use strict;
 use warnings;
 
-use Carp;
+use Carp qw(cluck);
 
 use lib("./lib");
 use ares_core;
@@ -18,7 +18,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock ares_player_faction_valid ares_get_player_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_set_team_faction ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_get_faction_sizes ares_notify_faction ares_get_faction_spawn_pos ares_set_faction_spawn_pos ares_get_starting_credits ares_set_starting_credits);
+@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock ares_player_faction_valid ares_get_player_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_set_team_faction ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_get_faction_sizes ares_notify_faction ares_get_faction_spawn_pos ares_set_faction_spawn_pos ares_get_starting_credits ares_set_starting_credits fix_players_factions);
 
 
 
@@ -29,7 +29,7 @@ sub ares_new_player {
 	my $player = $_[0];
 
 	if (!$player) {
-		carp("ares_new_player: player argument not given!");
+		cluck("ares_new_player: player argument not given!");
 		return 0;
 	}
 
@@ -37,10 +37,6 @@ sub ares_new_player {
 	my $faction_id = ares_get_player_faction($player);
 
 	if (starmade_is_admin($player)) {
-		return;
-	};
-	my $game_state = ares_game::ares_get_game_state();
-	if ($game_state eq "complete" || $game_state eq "" ) {
 		return;
 	};
 
@@ -76,11 +72,11 @@ sub ares_new_player_setup {
 	my $faction_id = $_[1];
 
 	if (!$player) {
-		carp("ares_new_player_setup: player name not given.");
+		cluck("ares_new_player_setup: player name not given.");
 		return 0;
 	}
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_new_player_setup: invalid faction given '$faction_id'.");
+		cluck("ares_new_player_setup: invalid faction given '$faction_id'.");
 		return 0;
 	}
 
@@ -151,11 +147,11 @@ sub ares_set_player_credits {
 	my $credits = $_[1];
 
 	if (!$player) {
-		carp("ares_set_player_credits: player name must be given as first argument.");
+		cluck("ares_set_player_credits: player name must be given as first argument.");
 		return 0;
 	}
 	if ($credits=~/\D/) {
-		carp("ares_set_player_credits: given invalid credits value '$credits'.");
+		cluck("ares_set_player_credits: given invalid credits value '$credits'.");
 		return 0;
 		
 	}
@@ -185,7 +181,7 @@ sub ares_add_account {
 	my $account = $_[0];
 
 	if (!$account) {
-		carp("ares_add_account: account name must be provided.");
+		cluck("ares_add_account: account name must be provided.");
 		return 0;
 	}
 
@@ -205,7 +201,7 @@ sub ares_check_account {
 	my $account = $_[0];
 
 	if (!$account) {
-		carp("ares_check_account: account name must be provided.");
+		cluck("ares_check_account: account name must be provided.");
 		return 0;
 	}
 	
@@ -230,7 +226,7 @@ sub ares_player_lock {
 	my $player = $_[0];
 
 	if (!$player) {
-		carp("ares_player_lock: player name must be provided");
+		cluck("ares_player_lock: player name must be provided");
 		return 0;
 	}
 
@@ -246,7 +242,7 @@ sub ares_player_lock {
 sub ares_player_unlock {
 	my $player_fh = $_[0];
 	if (!$player_fh) {
-		carp("$player_fh: invalid file handle provided.");
+		cluck("$player_fh: invalid file handle provided.");
 	}
 	close($player_fh);
 }
@@ -264,7 +260,7 @@ sub ares_player_faction_valid {
 	my $faction_id = $_[0];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_player_faction_valid: faction id is not valid: '$faction_id'");
+		cluck("ares_player_faction_valid: faction id is not valid: '$faction_id'");
 		return 0;
 	}
 
@@ -305,7 +301,7 @@ sub ares_get_all_factions {
 sub ares_get_faction_name {
 	my $id = $_[0];
 	if (!($id=~/^-?\d+$/)) {
-		carp("ares_get_faction_name: invalid faction id given '$id'");
+		cluck("ares_get_faction_name: invalid faction id given '$id'");
 		return 0;
 	}
 	if ($id <= 0) {
@@ -325,11 +321,11 @@ sub ares_set_faction_name {
 	my $id = $_[0];
 	my $name = $_[1];
 	if (!($id=~/^-?\d+$/)) {
-		carp("ares_set_faction_name: invalid faction id given '$id'");
+		cluck("ares_set_faction_name: invalid faction id given '$id'");
 		return 0;
 	}
 	if (!$name) {
-		carp("ares_set_faction_name: faction name must be specified");
+		cluck("ares_set_faction_name: faction name must be specified");
 		return 0;
 
 	}
@@ -352,11 +348,11 @@ sub ares_set_team_faction {
 	my $faction_id = $_[1];
 
 	if (!($teamNum=~/^-?\d+$/)) {
-		carp("ares_set_team_faction: invalid team number given '$teamNum'");
+		cluck("ares_set_team_faction: invalid team number given '$teamNum'");
 		return 0;
 	}
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_set_team_faction: invalid faction_id given '$faction_id'");
+		cluck("ares_set_team_faction: invalid faction_id given '$faction_id'");
 		return 0;
 	}
 
@@ -373,7 +369,7 @@ sub ares_team_to_faction {
 	my $teamNum = $_[0];
 
 	if (!($teamNum=~/^-?\d+$/)) {
-		carp("ares_team_to_faction: invalid team number given '$teamNum'");
+		cluck("ares_team_to_faction: invalid team number given '$teamNum'");
 		return 0;
 	}
 
@@ -395,7 +391,7 @@ sub ares_team_to_faction {
 sub ares_get_faction_state {
 	my $id = $_[0];
 	if (!($id=~/^-?\d+$/)) {
-		carp("ares_get_faction_state: invalid faction id given '$id'");
+		cluck("ares_get_faction_state: invalid faction id given '$id'");
 		return 0;
 	}
 	if ($id <= 0) {
@@ -416,11 +412,11 @@ sub ares_set_faction_state {
 	my $state = $_[1];
 
 	if (!($id=~/^-?\d+$/)) {
-		carp("ares_set_faction_state: invalid faction id given '$id'");
+		cluck("ares_set_faction_state: invalid faction id given '$id'");
 		return 0;
 	}
 	if (!$state) {
-		carp("ares_set_faction_state: a state must be given.");
+		cluck("ares_set_faction_state: a state must be given.");
 		return 0;
 	}
 
@@ -442,7 +438,7 @@ sub ares_get_faction_home {
 	my $faction_id = $_[0];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_get_faction_home: invalid faction id given '$faction_id'");
+		cluck("ares_get_faction_home: invalid faction id given '$faction_id'");
 		return 0;
 	}
 
@@ -461,11 +457,11 @@ sub ares_set_faction_home {
 	my $home = $_[1];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_set_faction_home: invalid faction id given '$faction_id'");
+		cluck("ares_set_faction_home: invalid faction id given '$faction_id'");
 		return 0;
 	}
 	if (!$home) {
-		carp("ares_set_faction_home: requires home location to be set");
+		cluck("ares_set_faction_home: requires home location to be set");
 		return 0;
 	}
 
@@ -484,7 +480,7 @@ sub ares_get_faction_spawn_pos {
 	my $faction_id = $_[0];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_get_faction_spawn_pos: invalid faction id given '$faction_id'");
+		cluck("ares_get_faction_spawn_pos: invalid faction id given '$faction_id'");
 		return 0;
 	}
 
@@ -503,11 +499,11 @@ sub ares_set_faction_spawn_pos {
 	my $pos = $_[1];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_set_faction_spawn_pos: invalid faction id given '$faction_id'");
+		cluck("ares_set_faction_spawn_pos: invalid faction id given '$faction_id'");
 		return 0;
 	}
 	if (!$pos) {
-		carp("ares_set_faction_spawn_pos: requires spawn pos to be set");
+		cluck("ares_set_faction_spawn_pos: requires spawn pos to be set");
 		return 0;
 	}
 
@@ -530,11 +526,11 @@ sub ares_set_faction_npc {
 	my $npc_faction_id = $_[1];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_set_faction_npc: invalid faction id given '$faction_id'");
+		cluck("ares_set_faction_npc: invalid faction id given '$faction_id'");
 		return 0;
 	}
 	if (!($npc_faction_id=~/^-?\d+$/)) {
-		carp("ares_set_faction_npc: invalid faction id given '$npc_faction_id'");
+		cluck("ares_set_faction_npc: invalid faction id given '$npc_faction_id'");
 		return 0;
 	}
 
@@ -555,11 +551,11 @@ sub ares_get_faction_npc {
 	my $faction_id = $_[0];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_get_faction_npc: invalid faction id given '$faction_id'");
+		cluck("ares_get_faction_npc: invalid faction id given '$faction_id'");
 		return 0;
 	}
 
-	open(my $npc_fh, "<", "$ares_core::ares_state_faction/$faction_id/NPC") or return;
+	open(my $npc_fh, "<", "$ares_core::ares_state_faction/$faction_id/NPC") or return $faction_id;
 	my $npc_faction_id = join('', <$npc_fh>);
 	close($npc_fh);
 	return $npc_faction_id;
@@ -573,7 +569,7 @@ sub ares_get_faction_members {
 	my $id = $_[0];
 
 	if (!($id=~/^-?\d+$/)) {
-		carp("ares_get_faction_members: invalid faction id given '$id'");
+		cluck("ares_get_faction_members: invalid faction id given '$id'");
 		return 0;
 	}
 
@@ -602,11 +598,11 @@ sub ares_add_faction_member {
 	my $faction_id = $_[1];
 
 	if (!$player) {
-		carp("ares_add_faction_member: must provide player name");
+		cluck("ares_add_faction_member: must provide player name");
 		return 0;
 	}
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_add_faction_member: invalid faction id given '$faction_id'");
+		cluck("ares_add_faction_member: invalid faction id given '$faction_id'");
 		return 0;
 	}
 
@@ -645,7 +641,7 @@ sub ares_get_player_faction {
 	my $player = $_[0];
 
 	if (!$player) {
-		carp("ares_get_player_faction: must provide player name");
+		cluck("ares_get_player_faction: must provide player name");
 		return 0;
 	}
 
@@ -670,7 +666,7 @@ sub ares_unfaction_player {
 	my $player = $_[0];
 	
 	if (!$player) {
-		carp("ares_unfaction_player: must provide player name");
+		cluck("ares_unfaction_player: must provide player name");
 		return 0;
 	}
 
@@ -700,7 +696,7 @@ sub ares_fix_faction {
 	my $player = $_[0];
 
 	if (!$player) {
-		carp("ares_fix_faction: must provide player name");
+		cluck("ares_fix_faction: must provide player name");
 		return 0;
 	}
 
@@ -747,11 +743,11 @@ sub ares_notify_faction {
 	my $message = $_[1];
 
 	if (!($faction_id=~/^-?\d+$/)) {
-		carp("ares_notify_faction: invalid faction id given '$faction_id'");
+		cluck("ares_notify_faction: invalid faction id given '$faction_id'");
 		return 0;
 	}
 	if (!$message) {
-		carp("ares_notify_faction: must provide a message to send");
+		cluck("ares_notify_faction: must provide a message to send");
 	}
 
 	my @members = @{ares_get_faction_members($faction_id)};
@@ -777,12 +773,32 @@ sub ares_set_starting_credits {
 	my $credits = $_[0];
 
 	if ($credits=~/\D/) {
-		carp("ares_set_starting_credits: invalid number given: $credits");
+		cluck("ares_set_starting_credits: invalid number given: $credits");
 		return 0;
 	}
 	open(my $credits_fh, ">", "$ares_core::ares_state/starting_credits") or return;
 	print $credits_fh $credits;
 	close($credits_fh);
 }
+
+## fix_players_factions
+# make sure all players are factioned correctly
+# INPUT1: player list hash
+sub fix_players_factions {
+	my %player_list = %{$_[0]};
+
+	Player: foreach my $player (keys %player_list) {
+		if (starmade_is_admin($player)) {
+			next Player;
+		}
+		if (!(defined $player_list{$player}{control})) {
+			next Player;
+		}
+		my $lock_fh = ares_player_lock($player);
+		ares_fix_faction($player);
+		ares_player_unlock($lock_fh);
+	}
+}
+
 
 1;

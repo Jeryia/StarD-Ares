@@ -1,6 +1,9 @@
+[General]
+map_center='8 8 8'
+game_mode='Conquest'
 
 [Alpha_base]
-sector = '6 0 0',
+sector = '6 0 -17'
 blueprint = 'Ares Home Base Lite'
 type = 'station'
 value = 1
@@ -21,26 +24,8 @@ can_capture = 0
 home = 1
 spawn = 16.0 -4.1 18.0
 
-[Alpha_shop]
-sector = '7 0 0'
-blueprint = 'Ares Shop'
-type = 'station'
-value = 0.5
-owner = -2
-objective = 0
-can_capture = 0
-
-[Beta_shop]
-sector = '-7 0 0'
-blueprint = 'Ares Home Base'
-type = 'station'
-value = 0.5
-owner = -2
-objective = 0
-can_capture = 0
-
 [mining_station_alpha1]
-sector = '3 0 4'
+sector = '6 0 -14'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 0.5
@@ -49,7 +34,7 @@ objective = 0
 can_capture = 1
 
 [mining_station_beta1]
-sector = '-3 0 -4'
+sector = '-6 0 -3'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 0.5
@@ -58,7 +43,7 @@ objective = 0
 can_capture = 1
 
 [mining_station_alpha2]
-sector = '3 0 -4'
+sector = '1 0 -12'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 0.5
@@ -67,10 +52,20 @@ objective = 0
 can_capture = 1
 
 [mining_station_beta2]
-sector = '-3 0 4'
+sector = '-1 0 -6'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 0.5
 owner = -2
 objective = 0
 can_capture = 1
+
+[Contested_Shop]
+sector = '0 0 -9'
+blueprint = 'Ares Shop'
+type = 'station'
+value = 0.2
+owner = -2
+objective = 0
+can_capture = 1
+

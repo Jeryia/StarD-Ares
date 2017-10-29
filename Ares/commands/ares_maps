@@ -12,7 +12,7 @@ use Stard::Log;
 $|=1;
 
 ## setup environment
-starmade_setup_lib_env("./../../");
+ares_setup_run_env('.');
 
 
 

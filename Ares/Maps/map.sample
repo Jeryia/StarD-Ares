@@ -1,5 +1,9 @@
 # Sample map config showing all available options and hopefully explaining them
-
+[General]
+# center of map (added to all sector locations below
+map_center='8 8 8'
+# game mode (planned feature)
+game_mode='Conquest'
 
 [object_name]
 # sector the station/object is to be spawned in

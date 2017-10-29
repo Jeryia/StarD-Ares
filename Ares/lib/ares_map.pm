@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use File::Copy;
-use Carp;
+use Carp qw(cluck);
 
 use lib("./lib");
 use ares_core;
@@ -23,7 +23,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_get_map_config ares_get_raw_map_config ares_ck_map_config ares_get_cur_map ares_set_cur_map ares_get_map_list);
+@EXPORT = qw(ares_get_map_config ares_get_raw_map_config ares_ck_map_config ares_get_cur_map ares_set_cur_map ares_get_map_list ares_set_next_map ares_get_next_map);
 
 
 my %blank_hash = ();
@@ -38,7 +38,7 @@ sub ares_get_map_config {
 	}
 
 	my %ares_map_config = %{ares_get_raw_map_config("$ares_core::ares_state/cur.map")};
-	my $center;
+	my $center = '0 0 0';
 	if ($ares_map_config{General} && $ares_map_config{General}{map_center}) {
 		$center = $ares_map_config{General}{map_center}
 	}
@@ -64,7 +64,7 @@ sub ares_get_raw_map_config {
 	my $map = $_[0];
 
 	if (!$map) {
-		carp("ares_get_raw_map_config: musts provide map file to open");
+		cluck("ares_get_raw_map_config: musts provide map file to open");
 		return {}
 	}
 
@@ -164,6 +164,34 @@ sub ares_set_cur_map {
 	return 1;
 }
 
+## ares_set_next_map
+# Set the map for the next game
+# INPUT1: Name of map
+sub ares_set_next_map {
+	my $map = $_[0];
+
+	if (!$map) {
+		unlink("$ares_core::ares_state/nextmap");
+		return 0;
+	}
+
+	stdout_log("Setting next map to '$map'", 6);
+	open(my $map_fh, ">", "$ares_core::ares_state/nextmap") or
+		stdout_log("Failed: writing to file '$ares_core::ares_state/nextmap': $!", 3);
+	print $map_fh $map;
+	close($map_fh);
+	return 1;
+}
+
+## ares_get_next_map
+# Set the map for the next game
+# INPUT1: Name of map
+sub ares_get_next_map {
+	open(my $map_fh, "<", "$ares_core::ares_state/nextmap") or return '';
+	my $map = join("",<$map_fh>);
+	close($map_fh);
+	return $map;
+}
 
 ## ares_get_map_list
 # Get a list of the available maps

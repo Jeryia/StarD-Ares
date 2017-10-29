@@ -3,7 +3,7 @@ package ares_core;
 use strict;
 use warnings;
 
-use Carp;
+use Carp qw(cluck);
 
 use lib("../../lib/perl");
 use Starmade::Base;
@@ -40,7 +40,7 @@ sub ares_setup_run_env {
 		-d $ares_home ||
 		-d "$ares_home/ares.cfg"
 	)) {
-		carp("ares_setup_run_env: invalid ares home dir given: '$ares_home'");
+		cluck("ares_setup_run_env: invalid ares home dir given: '$ares_home'");
 		return 0;
 	}
 
@@ -56,6 +56,17 @@ sub ares_setup_run_env {
 	stdout_log("Setting up Run environment with '$ares_home' as ares_home", 6);
 
 	%ares_config = %{stard_read_config("$ares_home/ares.cfg")};
+
+	# set default config settings (if not already set)
+	$ares_config{General}{autostart} //= 1;
+	$ares_config{General}{team_number} //= 2;
+	$ares_config{General}{credit_multiplier} //= 8000;
+	$ares_config{General}{player_prep_time} //= 3;
+	$ares_config{General}{starting_credits} //= 5000000;
+	$ares_config{General}{credit_scaling} //= 0.05;
+	$ares_config{General}{loglevel} //= 6;
+
+	set_loglevel($ares_config{General}{loglevel});
 }
 
 ## ares_get_config_field

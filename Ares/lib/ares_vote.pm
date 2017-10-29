@@ -2,16 +2,19 @@ package ares_vote;
 use strict;
 use warnings;
 
-use Carp;
+use Carp qw(cluck);
 
 use lib("./lib");
 use ares_core;
+
+use lib("./lib");
+use Stard::Log;
 
 our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_votes ares_vote_tally ares_vote_win ares_vote_for);
+@EXPORT = qw(ares_votes ares_vote_tally ares_vote_win ares_vote_for ares_reset_votes);
 
 
 
@@ -63,7 +66,7 @@ sub ares_vote_win {
 		my $winner = int(rand($#winners));
 		return $winners[$winner];
 	}
-	return $ares_core::ares_config{General}{default_map};
+	return;
 }
 
 ## ares_vote_for 
@@ -91,5 +94,15 @@ sub ares_vote_for {
 	close($vote_r_fh);
 };
 
-
+## ares_reset_votes
+# Reset all votes so we can start fresh
+# OUTPUT: (boolean) 1 if success, 0 if failure
+sub ares_reset_votes {
+	my %votes = ();
+	if(!unlink("$ares_core::ares_state/vote")) {
+		stdout_log("Failed to remove file '$ares_core::ares_state/vote': $!", 2);
+		return 0;
+	}
+	return 1;
+}
 1;

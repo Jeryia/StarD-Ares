@@ -1,3 +1,7 @@
+[General]
+map_center='8 8 8'
+game_mode='Conquest'
+
 [Alpha_Base]
 sector = '6 0 4'
 blueprint = 'Ares Massive Base'

@@ -44,15 +44,6 @@ my %last_notification = ();
 # database handle (should ee have one)
 my $dbh;
 
-if ($config{General}{use_mysql}) {
-	require DBI;
-	$dbh = DBI->connect("DBI:mysql:database=$config{database};host=$config{db_host}",
-		$config{db_user}, $config{db_passwd},
-		{'RaiseError' => 1}
-	);
-	my $sth = $dbh->prepare("INSERT IGNORE INTO state (name, value) VALUES( ?, ? );");
-	eval($sth->execute('game_state', 'waiting_for_players'));
-}
 
 my %sector_state;
 
@@ -63,88 +54,47 @@ exit 0;
 
 ## Real work starts here
 sub main {
-	my %ares_map_config;
-	my $state_time = 0;
-	ares_setup_game_env();
 	stdout_log("Ares Daemon Started", 5);
 
-	my $status;
+	my $old_state = '';
+	my %ares_map_config;
 	while (1 == 1) {
 		stdout_log("Beginning main loop", 6);
-		my $new_status;
-		if (!$status) {
-			$status = "waiting_for_players";
-			$new_status = "waiting_for_players";
-			%ares_map_config = ();
+		my $state = ares_get_game_state();
+		if (!$state) {
+			stdout_log("No game state found... Setting game state to 'waiting_for_players'", 5);
+			 ares_set_game_state('waiting_for_players');
 		};
-		my $save_status = ares_get_game_state();
-		if ($save_status ne $status) {
-			$new_status = $save_status;
-			print "status_update: $new_status\n";
-			stdout_log("New game state set: $new_status", 5);
-			$status = $new_status;
-			$state_time=0;
-		};
-		
-		if ($status eq "waiting_for_players") {
-			$new_status=waiting_for_players($state_time);
+		if ($state ne $old_state) {
+			%ares_map_config = %{ares_get_map_config()};
 		}
-		elsif ($status eq "waiting_start") {
-			$new_status=waiting_start($state_time);
+		if ( !%ares_map_config ) {
+			stdout_log("No map is loaded! Starting new game", 2);
+			ares_set_game_state('complete');
+			ares_set_game_state('waiting_for_players');
+		}
+		my $state_time=time_in_state();
+		
+		if ($state eq "waiting_for_players") {
+			waiting_for_players($state_time);
+		}
+		elsif ($state eq "waiting_start") {
+			waiting_start($state_time);
 	
 		}
-		elsif ($status eq "in_progress") {
-			$new_status=in_progress($state_time,\%ares_map_config);
+		elsif ($state eq "in_progress") {
+			in_progress($state_time,\%ares_map_config);
 		}
-		elsif ($status eq "complete") {
-			$new_status=complete($state_time);
+		elsif ($state eq "complete") {
+			complete($state_time);
 		}
 		else {
-			$new_status = "waiting_for_players";
-		};
-		if ($new_status) {
-			stdout_log("Game state update: $new_status", 5);
-			
-			ares_set_game_state($new_status);
-			$status = $new_status;
-			$state_time=0;
-			starmade_broadcast("You can view the progress of the game at any time with the !status command.");
-			starmade_broadcast("To see how to play type !ares_help");
-
-			if ($config{General}{use_mysql}) {
-				my $sth = $dbh->prepare("UPDATE state SET value = ? WHERE name =  'game_state';");
-				eval($sth->execute($status));
-			}
-
-			if (
-				($new_status eq "waiting_for_players" || 
-				$new_status eq "waiting_start" )
-			) {
-				%ares_map_config = ();
-			};
-		};
-		if ( ! keys %ares_map_config ) {
-			my $map = ares_get_cur_map();
-			if (!$map && $config{General}{autostart}) {
-				stdout_log("No map is loaded! Starting new game", 5);
-				my $new_map = ares_vote_win();
-				stdout_log("Loading new game with map $new_map", 5);
-				ares_start_new_game($new_map);
-			}
-			if ($map) {
-				stdout_log("Loading new map config", 6);
-				%ares_map_config = %{ares_get_map_config()};
-				if (!(keys %ares_map_config)) {
-					stdout_log("Error Loading new map config", 2);
-					starmade_broadcast("Error loading current map. Please contact an admin.");
-					stdout_log("Resetting current map, let's hope that fixes this...", 5);
-					ares_set_cur_map();
-				}
-			}
+			stdout_log("Invalid game state '$state' detected... Resetting game", 1);
+			ares_set_game_state('complete');
+			ares_set_game_state('waiting_for_players');
 		}
 		stdout_log("Main loop complete, sleeping until next run", 6);
-		sleep $config{General}{poll_time};
-		$state_time +=$config{General}{poll_time};
+		sleep ares_get_config_field('poll_time');
 		stdout_log("=== MARK ===", 6);
 	};
 };
@@ -154,7 +104,8 @@ sub main {
 # Currently there are not enough players in the game to start
 # INPUT1: time we've been in this state (seconds)
 sub waiting_for_players {
-	my $state_time = $_[0];
+	my $state_time = shift(@_);
+
 	my %player_list = %{starmade_player_list()};
 	
 	my @players;
@@ -168,22 +119,22 @@ sub waiting_for_players {
 	corral_factions(\%player_list);
 	faction_players(\%player_list);
 	if (@players >= $config{General}{min_players}) {
-		starmade_broadcast("Notice: Game Starting in $config{General}{player_prep_time} minutes.");
-		starmade_broadcast("Please Take this time to upload any ships you need, and spawn them.");
 		stdout_log("Enough players have logged on, switching to waiting_start", 5);
-		return "waiting_start";
+		ares_set_game_state("waiting_start");
+		return 1;
 	}
 	my $message = sprintf("Waiting on Players.. have %d of needed %d", $#players +1, $config{General}{min_players});
 	stdout_log($message, 6);
 	notify_every($message, 30);
-	return;
+	return 1;
 }
 
 ## waiting_start
 # Enough players are onine to start, just giving them time to get ready before we start.
 # INPUT1: time we've been in this state (seconds)
 sub waiting_start {
-	my $state_time = $_[0];
+	my $state_time = shift(@_);
+
 	my %player_list = %{starmade_player_list()};
 	
 	my @players;
@@ -198,40 +149,13 @@ sub waiting_start {
 	if (@players < $config{General}{min_players}) {
 		starmade_countdown(0, "Game starting in:");
 		starmade_broadcast("Notice: Too few players are online to start a game. Waiting for players to join.");
-		stdout_log("No longer have enoug players. Switching to waiting_for_players", 5);
-		return "waiting_for_players";
+		stdout_log("No longer have enough players. Switching to waiting_for_players", 5);
+		ares_set_game_state("waiting_for_players");
+		return 1;
 	}
 	if ($state_time / 60 >= $config{General}{player_prep_time}) {
-		my @factions = @{ares_get_player_factions()};
-		foreach my $faction (@factions) {
-			my $home = ares_get_faction_home($faction);
-
-			fix_players_factions(\%player_list);
-
-			stdout_log("Removing noexit from sector '$home'.", 6);
-			if (!starmade_sector_chmod($home, "remove", "noexit")) {
-				starmade_broadcast("Error removing noexit on $home.\n");
-				starmade_broadcast("Failed to start game. Please inform an admin!\n");
-				print starmade_last_output();
-				stdout_log("Failed to remove noexit from sector '$home'.", 2);
-				stdout_log("Could not start game. Will try again next loop", 2);
-				return;
-			}
-		
-			stdout_log("Setting '$home' to unprotected.", 6);
-			if (!starmade_sector_chmod($home, "remove", "protected")) {
-				starmade_broadcast("Error removing protection on $home.\n");
-				starmade_broadcast("Failed to start game. Please inform an admin!\n");
-				print starmade_last_output();
-				stdout_log("Failed to set sector '$home' as unprotected.", 2);
-				stdout_log("Could not start game. Will try again next loop", 2);
-				return;
-			}
-		}
-		starmade_broadcast("Notice: Game Has Started.");
-		starmade_broadcast("You are now free to attack your opponents.");
-		stdout_log("Game has started", 5);
-		return "in_progress";
+		ares_set_game_state("in_progress");
+		return 1;
 	}
 	my $remaining = ($config{General}{player_prep_time} * 60) - $state_time;
 	my $r_minutes = int($remaining/60);
@@ -262,7 +186,8 @@ sub in_progress {
 	if (!(keys %player_list) && defined $last_notification{no_players}) {
 		$last_notification{no_players}-= $config{General}{poll_time};
 		if ($last_notification{no_players} <= 0) {
-			return "complete";
+			ares_set_game_state("complete");
+			return 1;
 		}
 	}
 	else {
@@ -519,8 +444,8 @@ sub complete {
 		stdout_log("Game is complete. New game will start in $remaining sec", 6);
 		if ($remaining <= 0) {
 			my $map = ares_vote_win();
-			stdout_log("Loading new game with map $map", 5);
-			ares_start_new_game($map);
+			stdout_log("Loading new game", 5);
+			ares_set_game_state('waiting_for_players');
 		}
 	}
 	else {
@@ -603,25 +528,6 @@ sub faction_players {
 			ares_fix_faction($player);
 			ares_player_unlock($lock_fh);
 		}
-	}
-}
-
-## fix_players_factions
-# make sure all players are factioned correctly
-# INPUT1: player list hash
-sub fix_players_factions {
-	my %player_list = %{$_[0]};
-
-	Player: foreach my $player (keys %player_list) {
-		if (starmade_is_admin($player)) {
-			next Player;
-		}
-		if (!(defined $player_list{$player}{control})) {
-			next Player;
-		}
-		my $lock_fh = ares_player_lock($player);
-		ares_fix_faction($player);
-		ares_player_unlock($lock_fh);
 	}
 }
 

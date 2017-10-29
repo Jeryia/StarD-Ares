@@ -4,16 +4,19 @@ use warnings;
 
 use lib("./lib");
 use ares_core;
-use ares_launch;
+use ares_game;
+use ares_map;
 
 use lib("../../lib/perl");
 use Starmade::Message;
 use Starmade::Player;
+use Starmade::Base;
 use Stard::Log;
 
 ares_setup_run_env('.');
 
 set_loglevel(6);
+
 
 main(@ARGV);
 exit 0;
@@ -32,6 +35,7 @@ sub main {
 		exit 1;
 	}
 	stdout_log("New game started by $player", 5);
+	ares_set_game_state('complete');
 	if ($map) {
 		ares_start_new_game($map);
 	}

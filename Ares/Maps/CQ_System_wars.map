@@ -1,5 +1,7 @@
 [General]
-	starting_credits=15000000
+map_center='0 0 0'
+game_mode='Conquest'
+starting_credits=15000000
 
 [Alpha_spawn]
 sector = '8 8 2'
@@ -41,29 +43,31 @@ owner = -2
 objective = 0
 can_capture = 0
 
-[listening_post_alpha]
+[alpha_staging_area]
 sector = '8 8 0'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 1
-owner = 1
+owner = -2
 objective = 1
 can_capture = 1
+switch_owners_on_capture=1
 defenders = TA Gunship,TA Gunship
 defender_pos = 0 100 0,0 -100 0 
 
-[listening_post_beta]
+[beta_staging_area]
 sector = '8 8 -1'
 blueprint = 'Ares Mining Outpost'
 type = 'station'
 value = 1
-owner = 2
+owner = -2
 objective = 1
 can_capture = 1
+switch_owners_on_capture=1
 defenders = TA Gunship,TA Gunship
 defender_pos = 0 100 0,0 -100 0
 
-[military_base_alpha1]
+[alpha_military_base1]
 sector = '11 8 3'
 blueprint = 'Ares Home Base Lite'
 type = 'station'
@@ -71,10 +75,8 @@ value = 2
 owner	= 1
 objective = 1
 can_capture = 0
-defenders = TA Gunship,TA Valkyrie
-defender_pos = 0 100 0,0 -100 0 
 
-[military_base_alpha2]
+[alpha_military_base2]
 sector = '5 8 3'
 blueprint = 'Ares Home Base Lite'
 type = 'station'
@@ -82,10 +84,8 @@ value = 2
 owner	= 1
 objective = 1
 can_capture = 0
-defenders = TA Gunship,TA Valkyrie
-defender_pos = 0 100 0,0 -100 0 
 
-[military_base_beta1]
+[beta_military_base1]
 sector = '11 8 -4'
 blueprint = 'Ares Home Base Lite'
 type = 'station'
@@ -93,10 +93,8 @@ value = 2
 owner	= 2
 objective = 1
 can_capture = 0
-defenders = TA Gunship,TA Valkyrie
-defender_pos = 0 100 0,0 -100 0 
 
-[military_base_beta2]
+[beta_military_base2]
 sector = '5 8 -4'
 blueprint = 'Ares Home Base Lite'
 type = 'station'
@@ -104,10 +102,8 @@ value = 2
 owner	= 2
 objective = 1
 can_capture = 0
-defenders = TA Gunship,TA Valkyrie
-defender_pos = 0 100 0,0 -100 0 
 
-[factory_alpha]
+[alpha_factory]
 sector = '8 8 13'
 blueprint = 'Ares Massive Base'
 type = 'station'
@@ -115,10 +111,8 @@ value = 3
 owner	= 1
 objective = 1
 can_capture = 0
-defenders = TA Missile Frigate Mk2 NT,TA Gunship,TA Gunship
-defender_pos = 100 0 0, 0 100 0,0 -100 0
 
-[factory_beta]
+[beta_factory]
 sector = '8 8 -14'
 blueprint = 'Ares Massive Base'
 type = 'station'
@@ -126,5 +120,3 @@ value = 2
 owner	= 2
 objective = 1
 can_capture = 0
-defenders = TA Missile Frigate Mk2 NT,TA Gunship,TA Gunship
-defender_pos = 100 0 0, 0 100 0,0 -100 0

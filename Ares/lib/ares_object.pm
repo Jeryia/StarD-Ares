@@ -3,7 +3,7 @@ package ares_object;
 use strict;
 use warnings;
 
-use Carp;
+use Carp qw(cluck);
 
 use lib("./lib");
 use ares_core;
@@ -12,6 +12,7 @@ use ares_player;
 use lib("../../lib/perl");
 use Starmade::Base;
 use Starmade::Map;
+use Starmade::Message;
 use Starmade::Sector;
 use Stard::Base;
 use Stard::Log;
@@ -61,7 +62,7 @@ sub ares_write_object_status {
 	my $state = $_[1];
 
 	if (!($state=~/^-?\d+$/)) {
-		carp("ares_write_object_status: state must be an integer. '$state' is invalid!");
+		cluck("ares_write_object_status: state must be an integer. '$state' is invalid!");
 		return 0;
 	}
 
@@ -139,7 +140,7 @@ sub ares_place_object {
 	}
 
 	# Remove Stations in the sector
-	starmade_cmd("/load_sector_range $sector $sector");
+	#starmade_cmd("/load_sector_range $sector $sector");
 	foreach my $entity (keys %entities) {
 		if ($entity =~s/ENTITY_SPACESTATION_//) {
 			if (!starmade_despawn_sector($entity, "all", "0", $sector)) {
@@ -200,6 +201,7 @@ sub ares_spawn_defenders {
 	if ($npc) {
 		$defender_faction=$npc;
 	}
+	print "@defenders, faction: $defender_faction\n";
 	starmade_spawn_mobs_bulk(\@defenders, \@pos, $defender_faction, $sector, 1);
 }
 
