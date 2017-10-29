@@ -26,7 +26,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_start_new_game ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned ares_get_credit_scaling ares_setup_game_env ares_set_game_state ares_get_game_state time_in_state);
+@EXPORT = qw(ares_start_new_game ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned ares_get_credit_scaling ares_set_game_state ares_get_game_state time_in_state);
 
 my $DATABASE_HANDLE;
 
@@ -36,7 +36,7 @@ sub ares_start_new_game {
 	if ($map) {
 		ares_set_next_map($map);
 	}
-	ares_set_game_state('waiting_for_players');
+	return ares_set_game_state('waiting_for_players');
 }
 
 ## ares_defeat
@@ -199,9 +199,14 @@ sub ares_set_game_state {
 
 	my $things_ok = 1;
 	_setup_db();
+	ares_setup_game_env();
 
 	my $old_state = ares_get_game_state();
-	open(my $state_fh, ">", "$ares_core::ares_state/Status") or return;
+	my $state_fh;
+	if (!open($state_fh, ">", "$ares_core::ares_state/Status")) {
+		stdout_log("Failed to open '$ares_core::ares_state/Status': $!\n", 0);
+		return 0;
+	}
 	flock($state_fh, 2);
 
 	starmade_countdown(0 , "Resetting...");
