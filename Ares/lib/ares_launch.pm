@@ -37,7 +37,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_setup_new_game ares_setup_factions ares_setup_map assign_remaining_players ares_clean_all);
+@EXPORT = qw(ares_setup_new_game ares_setup_factions ares_setup_map assign_remaining_players ares_clean_all ares_setup_game_env);
 
 
 sub ares_setup_new_game {
