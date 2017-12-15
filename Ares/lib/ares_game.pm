@@ -19,6 +19,7 @@ use Starmade::Message;
 use Starmade::Player;
 use Starmade::Faction;
 use Starmade::Sector;
+use Stard::Base;
 use Stard::Log;
 
 
@@ -26,7 +27,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_start_new_game ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned ares_get_credit_scaling ares_set_game_state ares_get_game_state time_in_state);
+@EXPORT = qw(ares_start_new_game ares_defeat ares_game_status_string ares_clean_all ares_objectives_owned ares_get_credit_scaling ares_set_game_state ares_get_game_state time_in_state ares_get_game_mode ares_void_spawn);
 
 my $DATABASE_HANDLE;
 
@@ -60,6 +61,10 @@ sub ares_defeat {
 	print $faction_fh "Defeated";
 	close($faction_fh);
 	starmade_broadcast("$faction_name has been DEFEATED!");
+	my $game_mode = ares_get_game_mode();
+	if ($game_mode eq "Survival") {
+
+	}
 	
 	my @surviving;
 	foreach my $id (@faction_ids) {
@@ -159,13 +164,14 @@ sub ares_objectives_owned {
 		cluck("ares_objectives_owned: invalid faction id given '$faction_id'");
 		return 0;
 	}
-
-	my $objectives;
+	print "checking objectives for: $faction_id\n";
+	my $objectives = 0;
 	my %ares_map_config = %{ares_get_map_config()};
 	Entity: foreach my $object (keys %ares_map_config) {
 		if (!$ares_map_config{$object}{objective}) {
 			next Entity;
 		};
+		print "object '$object': " . int(ares_read_object_status($object)) . " ==  $faction_id\n";
 		if (int(ares_read_object_status($object)) == $faction_id) {
 			$objectives++;
 		};
@@ -416,6 +422,116 @@ sub time_in_state {
 	my $game_start = $stat[9];
 	
 	return time() - $game_start;
+}
+
+## ares_get_game_mode
+# Get the game mode of the current map
+# OUTPUT: Game mode
+sub ares_get_game_mode {
+	my %map = %{ares_get_map_config()};
+
+	if ($map{General} and $map{General}{game_mode}) {
+		return $map{General}{game_mode};
+	}
+	return 'Conquest';
+}
+
+## ares_get_team_num
+# Get the numer of teams in the game
+# OUTPUT: Game mode
+sub ares_get_team_num {
+	my %map = %{ares_get_map_config()};
+	my $game_mode = ares_get_game_mode();
+	if ($game_mode eq 'Survival') {
+		return 0;
+	}
+
+	if ($map{General} and $map{General}{teams}) {
+		return $map{General}{teams};
+	}
+	return 2;
+}
+
+## ares_void_spawn
+# 
+sub ares_void_spawn {
+	my %player_list = %{shift(@_)};
+
+	my %sectors = ();
+	Player: foreach my $player (keys %player_list) {
+		if (starmade_is_admin($player)) {
+			next Player;
+		}
+		if ($player_list{$player}{sector}) {
+			$sectors{$player_list{$player}{sector}} = 1;
+		}
+	}
+	foreach my $sector (keys %sectors) {
+		starmade_sector_chmod($sector, 'add', 'noexit');
+	}
+	starmade_broadcast("The Void has opened! Enemies emerge from the void! Sectors locked!");
+	my %waves = %{stard_read_config('./waves.cfg')};
+
+	my $wave_num = ares_get_wave_number();
+
+	my $wave_to_use = int($wave_num + rand(3) - 1);
+	while (!$waves{$wave_to_use} && $wave_to_use < 40) {
+		$wave_to_use++;
+	}
+	foreach my $key (sort(keys %waves)) {
+		print "[$key]\n";
+		foreach my $key2 (keys%{$waves{$key}}) {
+			print "$key2 = $waves{$key}{$key2}\n";
+		}
+	}
+	print "selected wave: $wave_to_use\n";
+	foreach my $player (keys %player_list) {
+		my @mobs = split(',', $waves{$wave_to_use}{mobs});
+		my @pos = ();
+		if ($player_list{$player}{sector}) {
+			starmade_spawn_mobs_bulk(\@mobs, \@pos, -1, $player_list{$player}{sector}, 1);
+		}
+		else {
+			print "Error player $player has no sector!\n";
+		}
+	}
+
+
+	starmade_countdown(30, "Void closes. (You can leave the sector again)");
+	sleep 30;
+	foreach my $sector (keys %sectors) {
+		starmade_sector_chmod($sector, 'remove', 'noexit');
+	}
+	starmade_broadcast("The Void has closed! (You are free to move about again)");
+	ares_set_wave_number($wave_num + .25);
+	return 1;
+}
+
+sub ares_set_wave_number {
+	my $wave_num = shift(@_);
+
+	my $wave_fh;
+	if (!open($wave_fh, ">", "$ares_core::ares_state/Wave")) {
+		stdout_log("Failed to open '$ares_core::ares_state/Wave': $!\n", 0);
+		return 0;
+	}
+	flock($wave_fh, 2);
+	print $wave_fh $wave_num;
+	close($wave_fh);
+}
+
+sub ares_get_wave_number {
+	my $wave_num;
+
+	my $wave_fh;
+	if (!open($wave_fh, "<", "$ares_core::ares_state/Wave")) {
+		stdout_log("Failed to open '$ares_core::ares_state/Wave': $!\n", 0);
+		return 0;
+	}
+	flock($wave_fh, 2);
+	$wave_num = join("\n", <$wave_fh>);
+	close($wave_fh);
+	return $wave_num
 }
 
 1;

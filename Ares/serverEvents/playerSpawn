@@ -34,7 +34,6 @@ sub main {
 
 	my $lock_fh = ares_player_lock($player);
 
-
 	if (!$lock_fh) {
 		exit 0;
 	}

@@ -30,16 +30,19 @@ sub main {
 	my $faction_concerned;
 	my %ares_map_config;
 	my $game_state;
+	my $game_mode;
 	my $objectives;
 
 
 	if (!$map =~/\S/) {
 		exit 0;
 	}
-	%ares_map_config = %{ares_get_map_config()};
 	$game_state = ares_get_game_state();
+	$game_mode = ares_get_game_mode();
 
-	
+	if ($game_mode eq "Conquest") {
+		exit 0;
+	}
 
 	if ($game_state ne 'in_progress') {
 		exit 0;
@@ -48,6 +51,7 @@ sub main {
 	if (!$entity || !$entity=~/^SPACESTATION_/) {
 		exit 0;
 	};
+	%ares_map_config = %{ares_get_map_config()};
 
 	$faction_concerned = check_objective_destroyed($entity);
 
@@ -61,7 +65,6 @@ sub main {
 	if ($objectives == 0) {
 		ares_defeat($faction_concerned);
 	};
-
 };
 
 ## check_objective_destroyed

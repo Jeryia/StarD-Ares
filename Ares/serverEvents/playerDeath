@@ -3,6 +3,8 @@ use strict;
 use warnings;
 
 my $ares_player_state = "./State/Players";
+use ares_game;
+use Starmade::Faction;
 
 main(@ARGV);
 
@@ -14,5 +16,13 @@ exit 0;
 
 sub main {
 	my $player = $_[0];
+
+	my $game_mode = ares_get_game_mode();
+	if ($game_mode eq "Survival") {
+		my %faction_list = %{starmade_faction_list_bname()};
+		if ($faction_list{$player}) {
+			ares_defeat($faction_list{$player});
+		}
+	}
 	exec("touch", "$ares_player_state/$player.dead");
 }

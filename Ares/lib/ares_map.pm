@@ -38,7 +38,7 @@ sub ares_get_map_config {
 	}
 
 	my %ares_map_config = %{ares_get_raw_map_config("$ares_core::ares_state/cur.map")};
-	my $center = '0 0 0';
+	my $center;
 	if ($ares_map_config{General} && $ares_map_config{General}{map_center}) {
 		$center = $ares_map_config{General}{map_center}
 	}
@@ -47,6 +47,9 @@ sub ares_get_map_config {
 	}
 	if ($center) {
 		%ares_map_config = %{starmade_recenter_map(\%ares_map_config, $center)};
+		if ($ares_map_config{General}{Spawn}) {
+			$ares_map_config{General}{Spawn} = starmade_location_add($center, $ares_map_config{General}{Spawn});
+		}
 	}
 	foreach my $entity (keys %ares_map_config) {
 		if ($ares_map_config{$entity}{owner}) {
@@ -86,6 +89,14 @@ sub ares_ck_map_config {
 	if (!%map_config) {
 		return 0;
 	}
+	if ($map_config{General} and $map_config{General}{game_mode}) {
+		if (
+			$map_config{General}{game_mode} ne 'Conquest' and
+			$map_config{General}{game_mode} ne 'Survival'
+		) {
+			return 0;
+		}
+	}
 
 	Object: foreach my $object (keys %map_config) {
 		if ($object eq "General") {
@@ -119,13 +130,36 @@ sub ares_ck_map_config {
 			$home{$map_config{$object}{owner}} = 1;
 		}
 	}
-
-	my @players = keys %home;
-	if (@players < 2) {
-		starmade_broadcast("Requested has less than 2 home bases!");
-		stdout_log("Error loading map: Requested has less than 2 home bases", 3);
+	my $game_mode = 'Conquest';
+	if ($map_config{General} and $map_config{General}{game_mode}) {
+		$game_mode = $map_config{General}{game_mode};
+	}
+	if (
+		$game_mode ne 'Conquest' and
+		$game_mode ne 'Survival'
+	) {
+		starmade_broadcast("Requested map has invalid game mode!");
+		stdout_log("Requested map has invalid game mode: '$game_mode'", 3);
 		return 0;
 	}
+
+
+	if ($game_mode eq 'Conquest') {
+		my @players = keys %home;
+		if (@players < 2) {
+			starmade_broadcast("Requested map has less than 2 home bases!");
+			stdout_log("Error loading map: Requested has less than 2 home bases", 3);
+			return 0;
+		}
+	}
+	if ($game_mode eq 'Survival') {
+		if ((!$map_config{General}) or (!$map_config{General}{Spawn})) {
+			starmade_broadcast("Requested map has no spawn!");
+			stdout_log("Error loading map: Requested has no spawn defined! Requires: [General] Spawn=blah", 3);
+			return 0;
+		}
+	}
+
 	return 1;
 }
 

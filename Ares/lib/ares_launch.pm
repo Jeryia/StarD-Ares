@@ -24,14 +24,6 @@ use Starmade::Faction;
 use Stard::Base;
 use Stard::Log;
 
-my $ares_home = '.';
-my $ares_maps = "$ares_home/Maps";
-my $ares_state = "$ares_home/State";
-my $ares_state_faction = "$ares_state/Factions";
-my $ares_state_player = "$ares_state/Players";
-
-my $timestamp = `date +%s`;
-$timestamp =~s/\s//g;
 
 our (@ISA, @EXPORT);
 
@@ -72,7 +64,10 @@ sub ares_setup_new_game {
 
 
 	# wipe out the current setup
-	ares_clean_all();
+	if (!ares_clean_all()) {
+		stdout_log("Clean failed. Cannot start a game!", 0);
+		return 0;
+	}
 
 	# prep new map config
 	if(!ares_set_cur_map($map)) {
@@ -82,15 +77,15 @@ sub ares_setup_new_game {
 		return 0;
 	}
 
-	my %ares_map_config = %{ares_get_map_config($map)};
 
-	if (! keys %ares_map_config) {
-		starmade_broadcast("Error Loading map: $map");
-		stdout_log("Error Loading map: '$map'", 0);
-	}
 
 
 	ares_setup_factions() or return 0;
+	my %ares_map_config = %{ares_get_map_config($map)};
+	if (!%ares_map_config) {
+		starmade_broadcast("Error Loading map: $map");
+		stdout_log("Error Loading map: '$map'", 0);
+	}
 
 	ares_setup_map(\%ares_map_config) or return 0;
 
@@ -104,10 +99,11 @@ sub ares_setup_new_game {
 ## ares_setup_factions
 # Setup the factions needed to play the game.
 sub ares_setup_factions {
+	my $game_mode = ares_game::ares_get_game_mode();
 	my @team_names;
 	stdout_log("Setting Up Factions", 5);
-	if (-r "$ares_home/data/team_names") {
-		open(my $teams_fh, "<", "$ares_home/team_names");
+	if (-r "$ares_core::ares_home/data/team_names") {
+		open(my $teams_fh, "<", "$ares_core::ares_home/team_names");
 		@team_names = <$teams_fh>;
 		close($teams_fh);
 		foreach my $team (@team_names) {
@@ -121,58 +117,19 @@ sub ares_setup_factions {
 
 	my %faction_list = %{starmade_faction_list_bid()};
 	my %faction_nlist;
-
-	for (my $teamNum = 1; $teamNum <= ares_get_config_field('team_number'); $teamNum++) {
-		my $team_name = $team_names[$teamNum-1];
-		my $faction_id = ares_team_to_faction($teamNum);
-		my $npc_faction_id = ares_get_faction_npc($faction_id);
-		my $npc_name = "$team_name NPC";
-
-		if (
-			!$faction_id ||
-			!$faction_list{$faction_id}
-		) {
-			stdout_log("Creating faction $team_name", 5);
-			if(!starmade_faction_create($team_name, '')) {
-				starmade_broadcast("Failed to start game...");
-				print starmade_last_output();
-				stdout_log("Failed to create faction $team_name. Aborting start game", 1);
-				return 0;
-			}
-			my %faction_nlist=%{starmade_faction_list_bname()};
-			$faction_id = $faction_nlist{$team_name}{id};
-
-			mkdir("$ares_state_faction");
-			mkdir("$ares_state_faction/$faction_id");
-			ares_set_team_faction($teamNum, $faction_id);
-			ares_set_faction_name($faction_id, $team_name);
-		}
-
-		
-		if (
-			!$npc_faction_id ||
-			!$faction_list{$npc_faction_id}
-		) {
-			stdout_log("Creating faction $npc_name", 5);
-			if (!starmade_faction_create($npc_name, '')) {
-				starmade_broadcast("Failed to start game...");
-				print starmade_last_output();
-				stdout_log("Failed to create faction $npc_name. Aborting start game", 1);
-				return 0;
-			}
-			my %faction_nlist=%{starmade_faction_list_bname()};
-			$npc_faction_id = $faction_nlist{$npc_name}{id};
-			ares_set_faction_npc($faction_id, $npc_faction_id);
-		}
-
-		ares_set_faction_state($faction_id, "Active");
-		stdout_log("Faction '$team_name' is setup", 6);
-	};
 	if (!$faction_list{-1}) {
 		if (!starmade_faction_create('Pirates', '', -1)) {
 			starmade_broadcast("Failed to start game...");
 			print starmade_last_output();
 			stdout_log("Failed to create faction 'Pirates'. Aborting start game", 1);
+			return 0;
+		}
+	}
+	if (!$faction_list{-10}) {
+		if (!starmade_faction_create('Void Reincarnations', '', -10)) {
+			starmade_broadcast("Failed to start game...");
+			print starmade_last_output();
+			stdout_log("Failed to create faction 'Void Reincarnations'. Aborting start game", 1);
 			return 0;
 		}
 	}
@@ -205,14 +162,27 @@ sub ares_setup_factions {
 		stdout_log("Failed setting relations between -1 and '-3' to ally.", 1);
 	};
 
+
+	
+	## Create main factions
+	if ($game_mode ne 'Survival') {
+		my $num_teams = ares_game::ares_get_team_num();
+		for (my $teamNum = 1; $teamNum <= $num_teams; $teamNum++) {
+			if (!ares_create_team($team_names[$teamNum-1], \%faction_list, $teamNum)) {
+				return 0;
+			}
+		};
+	}
 	my @main_factions = @{ares_get_player_factions()};
 	my @factions = @{ares_get_all_factions()};
+
+	## Set relations...
 	foreach my $faction_id (@main_factions) {
 		if ($faction_id > 0) {
 			my $npc_faction_id = ares_get_faction_npc($faction_id);
 				
 			Faction2: foreach my $faction_id2 (@factions) {
-				if ($faction_id2 == 0) {
+				if ($faction_id2 == 0 or $faction_id == $faction_id2) {
 					next Faction2;
 				}
 				if ($faction_id2 == $npc_faction_id) {
@@ -251,7 +221,7 @@ sub ares_setup_factions {
 # Create whatever objects are needed by the given map
 sub ares_setup_map {
 	stdout_log("Setting up objects on the map", 5);
-	mkdir "$ares_state/Objects";
+	mkdir "$ares_core::ares_state/Objects";
 	my %ares_map_config = %{$_[0]};
 	starmade_setup_map(\%ares_map_config);
 	if ($ares_map_config{General}{starting_credits}) {
@@ -260,6 +230,9 @@ sub ares_setup_map {
 	else {
 		ares_set_starting_credits(ares_get_config_field('starting_credits'));
 	}
+	my $timestamp = `date +%s`;
+	$timestamp =~s/\s//g;
+
 	Object: foreach my $object (keys %ares_map_config) {
 		if ($object eq "General") {
 			next Object;
@@ -376,10 +349,12 @@ sub ares_clean_all {
 			unlink("$ares_core::ares_state_faction/$faction_id/Players");
 			unlink("$ares_core::ares_state_faction/$faction_id/Home");
 			unlink("$ares_core::ares_state_faction/$faction_id/Spawn");
+			rmdir("$ares_core::ares_state_faction/$faction_id");
 			starmade_faction_delete($faction_id);
 			starmade_faction_create(ares_get_faction_name($faction_id), '', $faction_id);
 		};
 	};
+	system('rm', '-rf', $ares_core::ares_state_faction);
 	my @players = keys %{starmade_player_list()};
 
 	foreach my $player (@players) {
@@ -442,7 +417,7 @@ sub ares_clean_all {
 
 sub assign_remaining_players {
 	my %player_data = %{starmade_player_list()};
-	mkdir "$ares_state_player";
+	mkdir "$ares_core::ares_state_player";
 	
 	for my $player (keys %player_data) {
 		my $lock = ares_player_lock($player);
@@ -462,3 +437,4 @@ sub ares_setup_game_env {
 	mkdir($ares_core::ares_data);
 }
 
+1;

@@ -18,7 +18,7 @@ our (@ISA, @EXPORT);
 
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock ares_player_faction_valid ares_get_player_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_set_team_faction ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_get_faction_sizes ares_notify_faction ares_get_faction_spawn_pos ares_set_faction_spawn_pos ares_get_starting_credits ares_set_starting_credits fix_players_factions);
+@EXPORT = qw(ares_new_player ares_new_player_setup ares_set_player_credits ares_add_account ares_check_account ares_player_lock ares_player_unlock ares_player_faction_valid ares_get_player_factions ares_get_all_factions ares_get_faction_name ares_set_faction_name ares_set_team_faction ares_team_to_faction ares_get_faction_state ares_set_faction_state ares_get_faction_home ares_set_faction_home ares_set_faction_npc ares_get_faction_npc ares_get_faction_members ares_add_faction_member ares_get_player_faction ares_unfaction_player ares_fix_faction ares_get_faction_sizes ares_notify_faction ares_get_faction_spawn_pos ares_set_faction_spawn_pos ares_get_starting_credits ares_set_starting_credits fix_players_factions ares_create_team);
 
 
 
@@ -41,26 +41,51 @@ sub ares_new_player {
 	};
 
 	if (!$faction_id) {
-		my %faction_sizes = %{ares_get_faction_sizes()};
-		Faction: foreach my $faction_id1 (keys %faction_sizes) {
-			foreach my $faction_id2 (keys %faction_sizes) {
-				if (
-					$faction_sizes{$faction_id1} >= $faction_sizes{$faction_id2} &&
-					$faction_id1 != $faction_id2
-				) {
-					next Faction;
-				}
-			}
-			ares_new_player_setup($player, $faction_id1);
-			return;
+		my $game_mode = ares_game::ares_get_game_mode();
+		if ($game_mode ne "Survival" ) {
+			return ares_new_player_setup($player, get_smallest_player_faction());
 		}
-		my @faction_ids = keys %faction_sizes;
-		my $rand_faction = rand(@faction_ids) % @faction_ids;
-		ares_new_player_setup($player, $faction_ids[$rand_faction]);
+		else {
+			my %faction_list = %{starmade_faction_list_bid()};
+			if (!%faction_list) {
+				stdout_log("Failed to get faction list from starmade. Did starmade die?", 1);
+				return 0;
+			}
+			$faction_id = ares_create_team($player, \%faction_list);
+			if (!$faction_id) {
+				return 0;
+			}
+			return ares_new_player_setup($player, $faction_id);
+		}
 	}
 	else {
 		starmade_faction_add_member($player, $faction_id);
 	}
+}
+
+## get_smallest_player_faction
+# Get the faction id of the smallest player faction
+# OUTPUT: faction id of the smallest ares player faction (random if they are the same)
+sub get_smallest_player_faction {
+	my %faction_sizes = %{ares_get_faction_sizes()};
+	Faction: foreach my $faction_id1 (keys %faction_sizes) {
+		foreach my $faction_id2 (keys %faction_sizes) {
+			if (
+				$faction_sizes{$faction_id1} >= $faction_sizes{$faction_id2} &&
+				$faction_id1 != $faction_id2
+			) {
+				next Faction;
+			}
+		}
+		return $faction_id1;
+	}
+	if (%faction_sizes) {
+		my @faction_ids = keys(%faction_sizes);
+		my $rand_faction = rand(100) % ($#faction_ids +1);
+		return $faction_ids[$rand_faction];
+	}
+	cluck("No factions cound be found!");
+	return 0;
 }
 
 ## ares_new_player_setup 
@@ -73,6 +98,10 @@ sub ares_new_player_setup {
 
 	if (!$player) {
 		cluck("ares_new_player_setup: player name not given.");
+		return 0;
+	}
+	if (!$faction_id) {
+		cluck("ares_new_player_setup: invalid faction given '$faction_id'.");
 		return 0;
 	}
 	if (!($faction_id=~/^-?\d+$/)) {
@@ -100,7 +129,6 @@ sub ares_new_player_setup {
 			starmade_teleport_to($player, ares_get_faction_spawn_pos($faction_id));
 			starmade_set_spawn_player($player);
 	
-			print "faction_id = $faction_id\n";
 			my $faction_name = ares_get_faction_name($faction_id);
 			starmade_broadcast("$player has been assigned to $faction_name!");
 			return 1;
@@ -275,9 +303,14 @@ sub ares_player_faction_valid {
 # Get a list of the ares factions
 # OUTPUT: array of the main factions
 sub ares_get_player_factions {
-	my @factions;
-	for (my $teamNum = 1; $teamNum <= $ares_core::ares_config{General}{team_number}; $teamNum++) {
-		push(@factions, ares_team_to_faction($teamNum));
+	my @factions = ();
+	if (opendir(my $faction_dh, "$ares_core::ares_state_faction")) {
+		my @tmp = readdir($faction_dh);
+		foreach my $file (@tmp) {
+			if (!($file=~/^\./)) {
+				push(@factions, $file);
+			}
+		}
 	}
 	return \@factions;
 }
@@ -304,10 +337,16 @@ sub ares_get_faction_name {
 		cluck("ares_get_faction_name: invalid faction id given '$id'");
 		return 0;
 	}
+	print "faction_id: $id\n";
 	if ($id <= 0) {
 		return "";
 	}
-	open(my $faction_fh, "<", "$ares_core::ares_state_faction/$id/name") or return;
+
+	my $faction_fh;
+	if (!open($faction_fh, "<", "$ares_core::ares_state_faction/$id/name")) {
+		stdout_log("Failed to open '$ares_core::ares_state_faction/$id/name': $!", 3);
+		return;
+	}
 	my $name = <$faction_fh>;
 	close($faction_fh);
 	return $name;
@@ -334,7 +373,12 @@ sub ares_set_faction_name {
 	}
 
 	mkdir("$ares_core::ares_state_faction/$id");
-	open(my $faction_fh, ">", "$ares_core::ares_state_faction/$id/name") or return;
+	my $faction_fh;
+	if(!open($faction_fh, ">", "$ares_core::ares_state_faction/$id/name")) {
+		stdout_log("Failed to open '$ares_core::ares_state_faction/$id/name': $!", 3);
+		return;
+	}
+
 	print $faction_fh $name;
 	close($faction_fh);
 }
@@ -437,15 +481,20 @@ sub ares_set_faction_state {
 sub ares_get_faction_home {
 	my $faction_id = $_[0];
 
-	if (!($faction_id=~/^-?\d+$/)) {
-		cluck("ares_get_faction_home: invalid faction id given '$faction_id'");
-		return 0;
+	if ($faction_id) {
+		if (open(my $home_fh, "<", "$ares_core::ares_state_faction/$faction_id/Home")) {
+			my $home = join("", <$home_fh>);
+			close($home_fh);
+			if ($home) {
+				return $home;
+			}
+		}
 	}
-
-	open(my $home_fh, "<", "$ares_core::ares_state_faction/$faction_id/Home") or return;
-	my $home = join("", <$home_fh>);
-	close($home_fh);
-	return $home;
+	my %map = %{ares_map::ares_get_map_config()};
+	if ($map{General} and $map{General}{Spawn}) {
+		return $map{General}{Spawn};
+	}
+	return '0 0 0';
 }
 
 ## ares_set_faction_home
@@ -482,6 +531,10 @@ sub ares_get_faction_spawn_pos {
 	if (!($faction_id=~/^-?\d+$/)) {
 		cluck("ares_get_faction_spawn_pos: invalid faction id given '$faction_id'");
 		return 0;
+	}
+	my %map = %{ares_map::ares_get_map_config()};
+	if ($map{General} and $map{General}{Spawn_pos}) {
+		return $map{General}{Spawn_pos};
 	}
 
 	open(my $home_fh, "<", "$ares_core::ares_state_faction/$faction_id/Spawn") or return;
@@ -625,6 +678,7 @@ sub ares_add_faction_member {
 	if ( -w "$ares_core::ares_state_faction/$faction_id/Players") {
 		$player ="\n$player";
 	}
+	system('mkdir', '-p', "$ares_core::ares_state_faction/$faction_id");
 	open(my $member_fh, ">>", "$ares_core::ares_state_faction/$faction_id/Players") 
 		or starmade_broadcast("can't open file '$ares_core::ares_state_faction/$faction_id/Players': $!");
 	flock($member_fh, 2);
@@ -656,7 +710,7 @@ sub ares_get_player_faction {
 		
 	}
 	stdout_log("Failed to get faction for '$player'", 5);
-	return;
+	return 0;
 }
 
 ## ares_unfaction_player
@@ -800,5 +854,70 @@ sub fix_players_factions {
 	}
 }
 
+## ares_create_team
+# create an ares faction
+# INPUT2: team name
+# INPUT3: faction list (by name) pointer (from starmade_list_faction_bid)
+# INPUT1: team number (optional)
+sub ares_create_team {
+	my $team_name = shift(@_);
+	my %faction_list = %{shift(@_)};
+	my $team_num;
+	if ( @_ ) {
+		$team_num = shift(@_);
+	}
 
+	my $faction_id;
+	my $npc_faction_id;
+	if ($team_num) {
+		$faction_id = ares_team_to_faction($team_num);
+		$npc_faction_id = ares_get_faction_npc($faction_id);
+	}
+	my $npc_name = "$team_name NPC";
+
+	if (!(defined $team_num)) {
+		my @factions = @{ares_get_player_factions()};
+		$team_num = $#factions +1;
+	}
+
+	if (
+		!$faction_id ||
+		!$faction_list{$faction_id}
+	) {
+		stdout_log("Creating faction $team_name", 5);
+		if(!starmade_faction_create($team_name, '')) {
+			starmade_broadcast("Failed to start game...");
+			print starmade_last_output();
+			stdout_log("Failed to create faction $team_name. Aborting start game", 1);
+			return 0;
+		}
+		my %faction_nlist=%{starmade_faction_list_bname()};
+		$faction_id = $faction_nlist{$team_name}{id};
+		mkdir($ares_core::ares_state_faction);
+		mkdir("$ares_core::ares_state_faction/$faction_id");
+	}
+
+		
+	if (
+		!$npc_faction_id ||
+		!$faction_list{$npc_faction_id}
+	) {
+		stdout_log("Creating faction $npc_name", 5);
+		if (!starmade_faction_create($npc_name, '')) {
+			starmade_broadcast("Failed to start game...");
+			print starmade_last_output();
+			stdout_log("Failed to create faction $npc_name. Aborting start game", 1);
+			return 0;
+		}
+		my %faction_nlist=%{starmade_faction_list_bname()};
+		$npc_faction_id = $faction_nlist{$npc_name}{id};
+		ares_set_faction_npc($faction_id, $npc_faction_id);
+	}
+
+	ares_set_team_faction($team_num, $faction_id);
+	ares_set_faction_name($faction_id, $team_name);
+	ares_set_faction_state($faction_id, 'Active');
+	stdout_log("Faction '$team_name' is setup", 6);
+	return $faction_id;
+}
 1;

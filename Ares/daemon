@@ -39,6 +39,7 @@ set_loglevel(6);
 my %config = %{stard_read_config("$ares_home/ares.cfg")};
 # Stores the last time a certain type of notification was given for the use of not spamming players
 my %last_notification = ();
+my $last_wave = 0;
 # global variable used to store the percentage increate that giving credits recieves.
 
 # database handle (should ee have one)
@@ -55,6 +56,7 @@ exit 0;
 ## Real work starts here
 sub main {
 	stdout_log("Ares Daemon Started", 5);
+	starmade_wait_until_running();
 
 	my $old_state = '';
 	my %ares_map_config;
@@ -63,7 +65,7 @@ sub main {
 		my $state = ares_get_game_state();
 		if (!$state) {
 			stdout_log("No game state found... Setting game state to 'waiting_for_players'", 5);
-			 ares_set_game_state('waiting_for_players');
+			ares_set_game_state('waiting_for_players');
 		};
 		if ($state ne $old_state) {
 			%ares_map_config = %{ares_get_map_config()};
@@ -96,6 +98,7 @@ sub main {
 		stdout_log("Main loop complete, sleeping until next run", 6);
 		sleep ares_get_config_field('poll_time');
 		stdout_log("=== MARK ===", 6);
+		$old_state = $state;
 	};
 };
 
@@ -177,6 +180,7 @@ sub waiting_start {
 sub in_progress {
 	my $state_time = $_[0];
 	my %ares_map_config = %{$_[1]};
+	my $game_mode = ares_get_game_mode();
 
 	my %player_list = %{starmade_player_list()};
 	my %faction_payout;
@@ -194,10 +198,27 @@ sub in_progress {
 		# set countdown for 10 minutes and keep it there until no one is online
 		$last_notification{no_players} = 10*60;
 	}
+	if ($game_mode eq 'Survival') {
+		$last_wave+=$config{General}{poll_time};
+		if ($last_wave > $config{General}{time_between_waves}) {
+			#my $pid = fork();
+			#if (!$pid) {
+				#my $pid = fork();
+				#if (!$pid) {
+					ares_void_spawn(\%player_list);
+				#}
+				#exit 0;
+			#}
+			#wait();
+			$last_wave = 0;
+		}
+	}
 
 	# General game maintinance
 	faction_players(\%player_list);
-	balance_factions(\%player_list);
+	if ($game_mode ne 'Survival') {
+		balance_factions(\%player_list);
+	}
 	Object: foreach my $object (keys %ares_map_config) {
 		if ($object eq "General") {
 			next Object;
